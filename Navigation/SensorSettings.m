@@ -7,7 +7,7 @@ Sensor.Gyro.Ts = Sensor.Ts;
 
 % Stochastics noise
 Sensor.Gyro.Noise.Brown.Mean = zeros(3,1);
-Sensor.Gyro.Noise.Brown.Variance = zeros(3,1);
+Sensor.Gyro.Noise.Brown.Variance = [1;1;1]*4e-6;
 
 Sensor.Gyro.Noise.White.Mean = zeros(3,1);
 Sensor.Gyro.Noise.White.PSD = deg2rad(0.005);    % [rad/s/sqrt(Hz)]
@@ -50,7 +50,7 @@ Sensor.Acc.Ts = Sensor.Ts;
 
 % Stochastics noise
 Sensor.Acc.Noise.Brown.Mean = zeros(3,1);
-Sensor.Acc.Noise.Brown.Variance = zeros(3,1);
+Sensor.Acc.Noise.Brown.Variance = [1;1;1]*2e-4;
 
 Sensor.Acc.Noise.White.Mean = zeros(3,1);
 Sensor.Acc.Noise.White.PSD = 100e-6*g0;     % [m/s^2/sqrt(Hz)] 100 ug/sqrt(Hz)
@@ -94,8 +94,8 @@ Sensor.Mag.Ts = Sensor.Ts;
 Sensor.Mag.Noise.Brown.Mean = 0;
 Sensor.Mag.Noise.Brown.Variance = 0;
 Sensor.Mag.Noise.White.Mean = 0;
-Sensor.Mag.Noise.White.PSD = 25e-9;
-Sensor.Mag.Noise.White.Variance = (Sensor.Mag.Noise.White.PSD)^2 * 1/(2*Sensor.Mag.Ts);
+Sensor.Mag.Noise.White.Sigma = 0.4e-6;
+Sensor.Mag.Noise.White.Variance = (Sensor.Mag.Noise.White.Sigma)^2;
 Sensor.Mag.Noise.Pink.Mean = 0;
 Sensor.Mag.Noise.Pink.Variance = 0;
 

@@ -16,3 +16,5 @@ P0(10:12,10:12) = 0.01^2 * eye(3);
 P0(13:15,13:15) = 1^2 * eye(3);
 pressure0 = 101325;
 stationaryTime = 50; 
+
+LLA0 = [0,0,0]; % [lat0; lon0; h0] [rad; rad; m]

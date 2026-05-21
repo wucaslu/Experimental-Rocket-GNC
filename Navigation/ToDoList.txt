@@ -1,4 +1,6 @@
 - Fix ISA Atmospheric Model
-- Check vz performance error
+- Use error states in MEKF
 - Add multi-rate update to the MEKF
 - Separate the MEKF functions in differente blocks
+- Correct the Zero Update Kalman Filter
+- Add Monte Carlo

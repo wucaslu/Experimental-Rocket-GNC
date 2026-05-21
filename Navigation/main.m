@@ -17,4 +17,6 @@ P0(13:15,13:15) = 1^2 * eye(3);
 pressure0 = 101325;
 stationaryTime = 50; 
 
-LLA0 = [0,0,0]; % [lat0; lon0; h0] [rad; rad; m]
+LLA0 = [0;0;0]; % [lat0; lon0; h0] [rad; rad; m]
+
+run csv_extract.m

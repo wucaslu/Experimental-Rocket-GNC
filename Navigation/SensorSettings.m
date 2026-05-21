@@ -91,16 +91,16 @@ Sensor.Acc.OR = [ ...
 Sensor.Mag.Ts = Sensor.Ts;
 
 % Stochastics noise
-Sensor.Mag.Noise.Brown.Mean = 0;
-Sensor.Mag.Noise.Brown.Variance = 0;
-Sensor.Mag.Noise.White.Mean = 0;
-Sensor.Mag.Noise.White.Sigma = 0.4e-6;
-Sensor.Mag.Noise.White.Variance = (Sensor.Mag.Noise.White.Sigma)^2;
-Sensor.Mag.Noise.Pink.Mean = 0;
-Sensor.Mag.Noise.Pink.Variance = 0;
+Sensor.Mag.Noise.Brown.Mean = zeros(3,1);
+Sensor.Mag.Noise.Brown.Variance = zeros(3,1);
+Sensor.Mag.Noise.White.Mean = zeros(3,1);
+Sensor.Mag.Noise.White.Sigma = 0.4e-6*[1;1;1];
+Sensor.Mag.Noise.White.Variance = (Sensor.Mag.Noise.White.Sigma).^2;
+Sensor.Mag.Noise.Pink.Mean = zeros(3,1);
+Sensor.Mag.Noise.Pink.Variance = zeros(3,1);
 
 % Systematic errors
-Sensor.Mag.Bias = 100e-9*(-1 + 2*rand(1));  % Bias between [-100e-9, 100e-9]
+Sensor.Mag.Bias = 100e-9*(-1 + 2*rand(1))*[1;1;1];  % Bias between [-100e-9, 100e-9]
 Sensor.Mag.Delay = 0;
 Sensor.Mag.ScaleFactor = 0.01/100;          % 0.01% Linearity Error
 Sensor.Mag.NLScaleFactor = 0;

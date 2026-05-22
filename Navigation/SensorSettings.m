@@ -180,7 +180,7 @@ Sensor.Mag.Noise.Pink.Variance = ...
     Sensor.Mag.Noise.Pink.Sigma.^2;
 
 % Systematic errors
-Sensor.Mag.Bias = 0.1*gauss_to_T*sgn3;   % fixed bias [T], +/-0.1 gauss
+Sensor.Mag.Bias = 0.01*gauss_to_T*sgn3;   % fixed bias [T], +/-0.01 gauss
 Sensor.Mag.Delay = 0;
 Sensor.Mag.ScaleFactor = 0;
 Sensor.Mag.NLScaleFactor = 0.12/100;     % 0.12% FS nonlinearity

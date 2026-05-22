@@ -10,7 +10,7 @@ filename = "flight_data.csv";
 data = readmatrix(filename, "NumHeaderLines", 1);
 
 % Extract columns
-time_s  = data(:,1) + stationaryTime + 5;
+time_s  = data(:,1) + stationaryTime;
 
 E       = data(:,2);
 N       = data(:,3);

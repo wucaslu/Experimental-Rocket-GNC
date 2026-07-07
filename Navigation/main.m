@@ -3,6 +3,7 @@ close all
 
 addpath('functions/')
 addpath('functions/aux_math/')
+addpath('functions/aux_MEKF/')
 addpath('settings/')
 addpath('settings/environment/')
 

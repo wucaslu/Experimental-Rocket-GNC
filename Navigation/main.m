@@ -3,8 +3,8 @@ close all
 
 addpath('functions/')
 addpath('functions/aux_math/')
-addpath('functions/environment/')
-
+addpath('settings/')
+addpath('settings/environment/')
 
 Environment.IGRF13.order = 3;
 [Environment.IGRF13.g, Environment.IGRF13.h] = IGRF13;

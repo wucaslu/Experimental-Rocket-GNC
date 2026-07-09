@@ -1,5 +1,4 @@
 - Fix ISA Atmospheric Model
-- Add multi-rate update to the MEKF
 - Separate the MEKF functions in differente blocks
 - Add Monte Carlo Simulation
 - Add Rocket Simulation function

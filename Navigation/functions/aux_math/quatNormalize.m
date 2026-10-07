@@ -8,9 +8,4 @@ function q = quatNormalize(q)
         q = q / n;
     end
 
-    % % Enforce a consistent quaternion sign.
-    % if q(4) < 0.0
-    %     q = -q;
-    % end
-
 end

@@ -43,7 +43,7 @@ a_NEU = [time_s, aN, aE, aU];
 q = [time_s, e1, e2, e3, e0];
 w = [time_s, w1, w2, w3];
 pressure = [time_s, press];
-LLA_rad = [time_s, deg2rad(lat_deg), deg2rad(lon_deg), 901.0 + U];
+LLA_rad = [time_s, deg2rad(lat_deg), deg2rad(lon_deg), U];
 
 q0 = [e1(1); e2(1); e3(1); e0(1)];
 %p0 = [N(1); E(1); -U(1)];

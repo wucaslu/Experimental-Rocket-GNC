@@ -1,6 +1,19 @@
 function [g, h] = IGRF13
 %
 % IGRF 13th Gen. Coefficients (2020)
+%
+% REFERENCES:
+% Alken, P., Thebault, E., Beggan, C. D., et al. (2021).
+% International Geomagnetic Reference Field: the thirteenth generation.
+% Earth, Planets and Space, 73, article 49.
+% https://doi.org/10.1186/s40623-020-01288-x
+%
+% Official IAGA V-MOD/NOAA 2020.0 main-field coefficient table:
+% https://www.ngdc.noaa.gov/IAGA/vmod/coeffs/igrf13coeffs.txt
+% Schmidt semi-normalized coefficients in nT, converted to T below.
+%
+% Reference spherical-harmonic synthesis implementation:
+% https://www.ngdc.noaa.gov/IAGA/vmod/igrf13.f
 % 
 %--------------------------------------------------------------------------
 % INPUTS:
@@ -11,14 +24,13 @@ function [g, h] = IGRF13
 %   h          [14x13]     Gauss Schmidt Quasi-Normalized Coff. h_nm Matrix   [T]
 %--------------------------------------------------------------------------
 %
-%% IGRF 13th Gen. Coefficients (2020)
 
 %1st Gaussian Coeff. [T]
 g1_0 = -29404.8 *1e-9;
 g1_1 = -1450.9 *1e-9;
 g2_0 = -2499.6 *1e-9;
-g2_1 = 1677 *1e-9;
-g2_2 = 1672 *1e-9;
+g2_1 = 2982 *1e-9;
+g2_2 = 1677 *1e-9;
 g3_0 = 1363.2 *1e-9;
 g3_1 = -2381.2 *1e-9;
 g3_2 = 1236.2 *1e-9;

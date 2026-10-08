@@ -7,6 +7,8 @@ addpath('functions/aux_MEKF/')
 addpath('settings/')
 addpath('settings/environment/')
 
+run mekfSettings.m
+
 Environment.IGRF13.order = 3;
 [Environment.IGRF13.g, Environment.IGRF13.h] = IGRF13;
 

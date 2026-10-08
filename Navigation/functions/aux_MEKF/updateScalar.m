@@ -5,6 +5,10 @@ function [q, v, p, bg, ba, P] = updateScalar( ...
     
     S = H * P * H' + Rvar;
     K = (P * H') / S;
+    % Frozen biases retain uncertainty; use the same gain for state and Joseph.
+    if ~estimate_bias
+        K(10:15,:) = 0;
+    end
     
     dx = K * r;
     

@@ -34,6 +34,9 @@ gauss_to_T = 1e-4;   % [T/gauss]
 
 %% General
 Sensor.Ts = 1/50;    % [s] 50 Hz common sensor sampling frequency
+% Fixed, distinct seeds make every sensor/axis/noise stream reproducible.
+% Brown.Variance is the variance of one bias increment: Sigma^2 * Ts.
+% Brown increments are accumulated once per sample, with no extra Ts factor.
 sec_per_hour = 3600;
 sec_per_year = 365.25*24*3600;
 %% Deterministic error configuration
@@ -63,15 +66,18 @@ Sensor.Gyro.Ts = Sensor.Ts;
 % Stochastic noise
 Sensor.Gyro.Noise.Brown.Mean = zeros(3,1);
 Sensor.Gyro.Noise.Brown.Sigma = 1e-3*ones(3,1);  % [rad/s/sqrt(s)]
-Sensor.Gyro.Noise.Brown.Variance = (Sensor.Gyro.Noise.Brown.Sigma).^2;
+Sensor.Gyro.Noise.Brown.Variance = (Sensor.Gyro.Noise.Brown.Sigma).^2 * Sensor.Gyro.Ts;
+Sensor.Gyro.Noise.Brown.Seed = [1101;1102;1103];
 
 Sensor.Gyro.Noise.White.Mean = zeros(3,1);
 Sensor.Gyro.Noise.White.PSD = deg2rad(0.014);    % [rad/s/sqrt(Hz)]
 Sensor.Gyro.Noise.White.Variance = (Sensor.Gyro.Noise.White.PSD)^2 * 1/(2*Sensor.Gyro.Ts);
+Sensor.Gyro.Noise.White.Seed = [1201;1202;1203];
 
 Sensor.Gyro.Noise.Pink.Mean = zeros(3,1);
 Sensor.Gyro.Noise.Pink.Sigma = deg2rad(2/3600)*ones(3,1);     % [rad/s], 2 deg/h
 Sensor.Gyro.Noise.Pink.Variance = Sensor.Gyro.Noise.Pink.Sigma.^2;
+Sensor.Gyro.Noise.Pink.Seed = [1301;1302;1303];
 
 % Systematic errors
 Sensor.Gyro.Bias = deg2rad(0.1)*sgn3;    % fixed bias [rad/s]
@@ -114,18 +120,21 @@ Sensor.Acc.Noise.Brown.Mean = zeros(3,1);
 Sensor.Acc.Noise.Brown.Sigma = ...
     (5e-3*g0/sqrt(sec_per_hour))*ones(3,1);        % [m/s^2/sqrt(s)], 5 mg/sqrt(h)
 Sensor.Acc.Noise.Brown.Variance = ...
-    (Sensor.Acc.Noise.Brown.Sigma).^2;
+    (Sensor.Acc.Noise.Brown.Sigma).^2 * Sensor.Acc.Ts;
+Sensor.Acc.Noise.Brown.Seed = [2101;2102;2103];
 
 Sensor.Acc.Noise.White.Mean = zeros(3,1);
 Sensor.Acc.Noise.White.PSD = 5e-3*g0;     % [m/s^2/sqrt(Hz)] 5 mg/sqrt(Hz)
 Sensor.Acc.Noise.White.Variance = ...
     (Sensor.Acc.Noise.White.PSD)^2 * 1/(2*Sensor.Acc.Ts);
+Sensor.Acc.Noise.White.Seed = [2201;2202;2203];
 
 Sensor.Acc.Noise.Pink.Mean = zeros(3,1);
 Sensor.Acc.Noise.Pink.Sigma = ...
     10e-3*g0*ones(3,1);   % [m/s^2], 10 mg
 Sensor.Acc.Noise.Pink.Variance = ...
     Sensor.Acc.Noise.Pink.Sigma.^2;
+Sensor.Acc.Noise.Pink.Seed = [2301;2302;2303];
 
 % Systematic errors
 Sensor.Acc.Bias = 0.001*sgn3;       % fixed bias [m/s^2], +/-400 mg
@@ -168,16 +177,19 @@ Sensor.Mag.Noise.Brown.Sigma = ...
     (50e-9/sqrt(sec_per_hour))*ones(3,1);          % [T/sqrt(s)], 50 nT/sqrt(h)
 Sensor.Mag.Noise.Brown.Variance = ...
     (Sensor.Mag.Noise.Brown.Sigma).^2 * Sensor.Mag.Ts;
+Sensor.Mag.Noise.Brown.Seed = [3101;3102;3103];
 
 Sensor.Mag.Noise.White.Mean = zeros(3,1);
 Sensor.Mag.Noise.White.Sigma = [3.2; 3.2; 4.1]*1e-3*gauss_to_T;   % [T RMS]
 Sensor.Mag.Noise.White.Variance = (Sensor.Mag.Noise.White.Sigma).^2;
+Sensor.Mag.Noise.White.Seed = [3201;3202;3203];
 
 Sensor.Mag.Noise.Pink.Mean = zeros(3,1);
 Sensor.Mag.Noise.Pink.Sigma = ...
     100e-9*ones(3,1);                             % [T], 100 nT
 Sensor.Mag.Noise.Pink.Variance = ...
     Sensor.Mag.Noise.Pink.Sigma.^2;
+Sensor.Mag.Noise.Pink.Seed = [3301;3302;3303];
 
 % Systematic errors
 Sensor.Mag.Bias = 0.01*gauss_to_T*sgn3;   % fixed bias [T], +/-0.01 gauss
@@ -220,15 +232,18 @@ Sensor.Baro.Noise.Brown.Sigma = ...
 
 Sensor.Baro.Noise.Brown.Variance = ...
     Sensor.Baro.Noise.Brown.Sigma^2 * Sensor.Baro.Ts;
+Sensor.Baro.Noise.Brown.Seed = 4101;
 
 Sensor.Baro.Noise.White.Mean = 0;
 Sensor.Baro.Noise.White.Sigma = 1.2;      % [Pa RMS] = 0.012 mbar
 Sensor.Baro.Noise.White.Variance = Sensor.Baro.Noise.White.Sigma^2;
+Sensor.Baro.Noise.White.Seed = 4201;
 
 Sensor.Baro.Noise.Pink.Mean = 0;
 Sensor.Baro.Noise.Pink.Sigma = 5;                 % [Pa]
 Sensor.Baro.Noise.Pink.Variance = ...
     Sensor.Baro.Noise.Pink.Sigma^2;
+Sensor.Baro.Noise.Pink.Seed = 4301;
 
 % Systematic errors
 % With one-point calibration, a representative fixed bias of +50 Pa is assumed.

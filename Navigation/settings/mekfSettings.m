@@ -9,8 +9,9 @@
 % so its equivalent diffusion amplitude is density/sqrt(2).
 MEKF.sigma_g  = 1.0e-3; % Includes margin for uncalibrated gyro model errors.
 MEKF.sigma_a  = 1.5e-1; % Includes the low-frequency colored-noise contribution.
-MEKF.sigma_bg = 2.0e-4;
-MEKF.sigma_ba = 2.0e-4;
+% Match the corrected sensor Brown diffusion (no extra Ts attenuation).
+MEKF.sigma_bg = 1.0e-3;
+MEKF.sigma_ba = 8.2e-4;
 
 MEKF.sigma_acc_tilt = 5.0e-2; % Normalized direction [-].
 MEKF.sigma_mag      = 2.0e-2; % Random direction noise plus calibration margin.

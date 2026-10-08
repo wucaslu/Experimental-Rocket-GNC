@@ -40,12 +40,14 @@ press   = data(:,20);
 p_NEU = [time_s, N, E, U];
 v_NEU = [time_s, vN, vE, vU];
 a_NEU = [time_s, aN, aE, aU];
-q = [time_s, e1, e2, e3, e0];
+% RocketPy attitude maps body to ENU. Apply the same ENU -> NEU -> NED
+% reference conversion used by the trajectory vectors; keep body rates.
+q = [time_s, enuToNedQuaternion([e1, e2, e3, e0])];
 w = [time_s, w1, w2, w3];
 pressure = [time_s, press];
 LLA_rad = [time_s, deg2rad(lat_deg), deg2rad(lon_deg), U];
 
-q0 = [e1(1); e2(1); e3(1); e0(1)];
+q0 = q(1,2:5)';   % Shared body-to-NED initial attitude, scalar-last.
 %p0 = [N(1); E(1); -U(1)];
 %v0 = [vN(1); vE(1); -vU(1)];
 LLA0 = [deg2rad(lat_deg(1)); deg2rad(lon_deg(1)); 901.0];

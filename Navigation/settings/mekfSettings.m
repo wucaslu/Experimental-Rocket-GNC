@@ -16,7 +16,7 @@ MEKF.sigma_ba = 8.2e-4;
 MEKF.sigma_acc_tilt = 5.0e-2; % Normalized direction [-].
 MEKF.sigma_mag      = 2.0e-2; % Random direction noise plus calibration margin.
 MEKF.sigma_baro_p   = 10.0;   % Pressure noise [Pa], after startup zeroing.
-MEKF.sigma_gps_p    = [1; 1; 5]; % Position [m]; active GPS is position-only.
+MEKF.sigma_gps_p    = [1; 1; 5]; % Position [m].
 MEKF.acc_gate      = 0.25;    % Fractional gravity-norm gate.
 
 MEKF.sigma_zupt_v = 1.0e-2; % Stationary velocity [m/s].
@@ -29,3 +29,12 @@ MEKF.sigma_zp_p   = 1.0e-2; % Stationary local position [m].
 % Disable when the origin/ISA reference is not justified. This does not
 % identify barometer gain or drift, or accelerometer/magnetometer calibration.
 MEKF.baro_zero_enabled = true;
+
+% Flight accelerometer bias learning uses GPS position only.
+% A single stationary pose cannot separate additive bias from gain/alignment
+% errors: ba remains an effective offset until an independent IMU calibration.
+MEKF.acc_bias_flight_enabled = true;
+MEKF.acc_bias_force_max = 2 * 9.80665; % Specific-force norm [m/s^2].
+MEKF.acc_bias_nis_max = 16.3; % Three-dimensional GPS position innovation gate.
+MEKF.acc_bias_max_rate = 0.10; % Maximum bias correction norm per second [m/s^3].
+MEKF.acc_bias_variance_floor = 0.01; % Effective bias uncertainty [(m/s^2)^2].

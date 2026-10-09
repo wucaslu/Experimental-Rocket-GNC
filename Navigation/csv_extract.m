@@ -4,7 +4,7 @@
 %                     "e0", "e1", "e2", "e3", "w1", "w2", "w3", "latitude", "longitude", "altitude", "pressure",
 %                      time_step = 0.02)
 % File name
-filename = "flight_data.csv";
+filename = "flight_data_corrected.csv";
 
 % Read numeric data, skipping the header row
 data = readmatrix(filename, "NumHeaderLines", 1);

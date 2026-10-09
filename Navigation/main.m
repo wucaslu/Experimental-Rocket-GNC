@@ -4,6 +4,7 @@ close all
 addpath('functions/')
 addpath('functions/aux_math/')
 addpath('functions/aux_MEKF/')
+addpath('functions/aux_GNSS/')
 addpath('settings/')
 addpath('settings/environment/')
 

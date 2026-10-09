@@ -14,13 +14,16 @@ MEKF.sigma_bg = 1.0e-3;
 MEKF.sigma_ba = 8.2e-4;
 
 MEKF.sigma_acc_tilt = 5.0e-2; % Normalized direction [-].
-MEKF.sigma_mag      = 2.0e-2; % Random direction noise plus calibration margin.
+% Empirical weights validated with the corrected trajectory and two held-out
+% GNSS seeds. They improve launch recovery without changing sensor calibration;
+% correlated errors and magnetic reference mismatch still limit covariance accuracy.
+MEKF.sigma_mag      = 1.5e-2; % Normalized magnetic direction uncertainty [-].
 MEKF.sigma_baro_p   = 10.0;   % Pressure noise [Pa], after startup zeroing.
-MEKF.sigma_gps_p    = [1; 1; 5]; % Position [m].
+MEKF.sigma_gps_p    = [1; 1; 5]; % Legacy position [m]; active R uses GNSS fix metadata.
 MEKF.acc_gate      = 0.25;    % Fractional gravity-norm gate.
 
 MEKF.sigma_zupt_v = 1.0e-2; % Stationary velocity [m/s].
-MEKF.sigma_zaru_g = 5.0e-3; % Stationary angular rate [rad/s].
+MEKF.sigma_zaru_g = 3.0e-3; % Stationary angular rate [rad/s]; bias held after launch.
 MEKF.sigma_acc_b  = 4.0e-1; % Stationary raw accelerometer [m/s^2].
 MEKF.sigma_zp_p   = 1.0e-2; % Stationary local position [m].
 

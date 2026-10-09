@@ -15,6 +15,7 @@ Environment.IGRF13.order = 3;
 stationaryTime = 50; 
 marginTime = 5;
 run csv_extract.m
+run gnssDatumSettings.m
 
 P0 = zeros(15, 15);
 g0 = 9.80665;   % gravity [m/s^2]

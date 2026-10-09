@@ -279,10 +279,11 @@ Sensor.Baro.Quant = ...
 %   - Operational velocity limit: 500 m/s
 %
 % Notes:
-%   - GPS/GNSS is modeled as a low-rate absolute position and velocity sensor.
-%   - The measurement frame is assumed to be local NED:
-%         position = [p_N; p_E; p_D]
-%         velocity = [v_N; v_E; v_D]
+%   - The active GNSS model is position-only: [latitude_deg; longitude_deg;
+%     ellipsoid_height_m], with fresh/valid/time/metric-error metadata.
+%   - Error processes use local NED metres before conversion to LLA.
+%   - Velocity settings below are legacy parameters; no GNSS velocity is
+%     produced or supplied to Navigation.
 %   - The vertical position accuracy is not explicitly specified in the
 %     datasheet, so it is conservatively assumed as 2 times the horizontal
 %     1-sigma value.
@@ -374,3 +375,50 @@ Sensor.GPS.R = diag([ ...
     Sensor.GPS.Noise.White.Position.Variance; ...
     Sensor.GPS.Noise.White.Velocity.Variance ...
 ]);
+
+%% Active position-only GNSS receiver simulation
+% GNSS outputs [latitude_deg; longitude_deg; ellipsoid_height_m], plus fix
+% metadata. Velocity truth is only used to check the receiver envelope.
+% MAX-M10S: 10 Hz GPS+Galileo, 1.5 m CEP under the datasheet static test.
+% Correlation, multipath, latency and recovery below are explicit simulation
+% assumptions, not additional datasheet specifications or satellite synthesis.
+% The white/slow variance split preserves the original open-sky CEP budget.
+% Acquisition period Sensor.GPS.Ts is independent of the IMU Sensor.Ts.
+% Receiver/transport ticks divide that period exactly. Output is buffered
+% atomically for IMU-rate polling; faster GNSS uses the latest delivered fix.
+Sensor.GPS.TransportSubsteps = 5;
+Sensor.GPS.Noise.TotalSigma = [sigma_xy_gps; sigma_xy_gps; sigma_z_gps];
+Sensor.GPS.Noise.White.Position.Sigma = [0.75; 0.75; 1.50]; % [m RMS]
+Sensor.GPS.Noise.White.Position.Variance = ...
+    Sensor.GPS.Noise.White.Position.Sigma.^2;
+Sensor.GPS.Correlated.Sigma = sqrt(Sensor.GPS.Noise.TotalSigma.^2 - ...
+    Sensor.GPS.Noise.White.Position.Sigma.^2); % [m RMS], stationary
+Sensor.GPS.Correlated.Tau = 60; % [s], aggregate slow solution residuals
+Sensor.GPS.Multipath.Sigma = [0.5; 0.5; 1.0]; % [m RMS] ground scenario
+Sensor.GPS.Multipath.Tau = 5; % [s]
+Sensor.GPS.Multipath.HeightScale = 50; % [m], exponential decay above pad
+Sensor.GPS.Seed = [5101;5102;5103;5201;5202;5203;5301;5302;5303;5401];
+Sensor.GPS.Position.QuantLLA = [1e-7;1e-7;1e-3]; % [deg; deg; m], UBX units
+% Acquisition-aligned nominal replay; use 0.10 s for the latency stress case.
+% The bounded kinematic compensation is not fixed-lag replay and performs
+% poorly through high-jerk events with the current stressed IMU configuration.
+Sensor.GPS.Delay = 0; % [s], configurable acquisition-to-delivery latency
+Sensor.GPS.MaxAge = 0.30; % [s], bounded kinematic latency compensation
+Sensor.GPS.StartupTime = 0; % [s], pre-acquired fix; cold/hot start configurable
+Sensor.GPS.ReacquisitionTime = 1; % [s], conservative recovery scenario
+Sensor.GPS.PacketLossProbability = 0; % Optional receiver/transport loss
+Sensor.GPS.OutageWindows = [inf inf]; % Rows: [start_s end_s], disabled
+Sensor.GPS.QualityWindows = [inf inf 1]; % Rows: [start_s end_s sigma_scale]
+Sensor.GPS.OutlierWindows = [inf inf 0 0 0]; % [start end N E D] in s/m
+Sensor.GPS.EnforceDynamicsLimits = true; % Conservative validity scenario
+% RocketPy exports z using its documented sea-level elevation convention.
+% Select false only for a source explicitly supplied as ellipsoid height.
+Sensor.GPS.SourceAltitudeIsMSL = true;
+Sensor.GPS.GeoidSeparation = NaN; % [m], configured after LLA0 is imported
+% A finite innovation gate requires consistent IMU/filter covariance and a
+% recovery policy. The current stressed IMU makes a strict nominal gate lose
+% GNSS aiding after launch, so enable it explicitly in an outlier scenario.
+Sensor.GPS.Navigation.NISLimit = inf; % Optional gate; e.g. 25 in stress tests
+Sensor.GPS.Navigation.LatencyAccelerationSigma = 10; % [m/s^2]
+Sensor.GPS.Position.R = diag(Sensor.GPS.Noise.TotalSigma.^2);
+GNSSConfig = Sensor.GPS; % Parameter of the GNSS and LLA conversion charts

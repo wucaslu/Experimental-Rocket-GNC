@@ -1,0 +1,69 @@
+function state = gnssPositionInitialize(referenceLLArad, cfg)
+%GNSSPOSITIONINITIALIZE Explicitly reset the position-only GNSS simulation.
+%   The GNSS model uses independent, reproducible Park-Miller noise streams.
+%   No MATLAB global random-number state is read or changed. Errors are in
+%   local NED metres; reported position is [latitude_deg; longitude_deg;
+%   absolute_altitude_m], with the same altitude datum as the source truth.
+
+    assert(isequal(size(referenceLLArad), [3, 1]));
+    assert(all(isfinite(referenceLLArad)));
+    assert(abs(referenceLLArad(1)) < pi / 2.0);
+    assert(cfg.Ts > 0.0 && isfinite(cfg.Ts));
+    assert(isfinite(cfg.TransportSubsteps) && cfg.TransportSubsteps >= 1.0);
+    assert(cfg.TransportSubsteps == floor(cfg.TransportSubsteps));
+    assert(cfg.Delay >= 0.0 && isfinite(cfg.Delay));
+    assert(cfg.MaxAge >= cfg.Delay && isfinite(cfg.MaxAge));
+    assert(cfg.Delay / cfg.Ts < 31.0);
+    assert(isequal(size(cfg.Seed), [10, 1]));
+    assert(all(cfg.Seed >= 1.0 & cfg.Seed <= 2147483646.0));
+    assert(all(cfg.Seed == floor(cfg.Seed)));
+    assert(all(cfg.Noise.White.Position.Sigma >= 0.0));
+    assert(all(cfg.Correlated.Sigma >= 0.0));
+    assert(all(cfg.Multipath.Sigma >= 0.0));
+    assert(cfg.Correlated.Tau > 0.0 && cfg.Multipath.Tau > 0.0);
+    assert(cfg.Multipath.HeightScale > 0.0);
+    assert(cfg.PacketLossProbability >= 0.0 && ...
+        cfg.PacketLossProbability <= 1.0);
+    assert(all(cfg.Position.QuantLLA >= 0.0));
+    assert(cfg.StartupTime >= 0.0 && cfg.ReacquisitionTime >= 0.0);
+
+    state = struct( ...
+        'rng', double(cfg.Seed), ...
+        'slowErrorNED', zeros(3, 1), ...
+        'multipathErrorNED', zeros(3, 1), ...
+        'nextAcquisitionTime', 0.0, ...
+        'previousStepTime', -realmax, ...
+        'previousAcquisitionTime', 0.0, ...
+        'previousVelocityNEU', zeros(3, 1), ...
+        'previousTruthValid', false, ...
+        'reacquisitionUntil', 0.0, ...
+        'queueLLA', zeros(3, 32), ...
+        'queueInfo', zeros(8, 32), ...
+        'queueDueTime', realmax * ones(1, 32), ...
+        'queueHead', 1.0, ...
+        'queueCount', 0.0, ...
+        'heldLLA', [referenceLLArad(1:2) * (180.0 / pi); ...
+                    referenceLLArad(3)], ...
+        'heldInfo', [0.0; 0.0; 0.0; 0.0; zeros(3, 1); 2.0]);
+
+    % Finite sentinels permit structured Unit Delay initial conditions.
+    % Empty queue slots are ignored until queueCount becomes positive.
+    % Start both mean-reverting processes at their stationary distribution.
+    for axis = 1:3
+        [normalSlow, state.rng(axis + 3)] = ...
+            normalDraw(state.rng(axis + 3));
+        [normalMultipath, state.rng(axis + 6)] = ...
+            normalDraw(state.rng(axis + 6));
+        state.slowErrorNED(axis) = cfg.Correlated.Sigma(axis) * normalSlow;
+        state.multipathErrorNED(axis) = ...
+            cfg.Multipath.Sigma(axis) * normalMultipath;
+    end
+end
+
+function [normal, seed] = normalDraw(seed)
+    seed = mod(16807.0 * seed, 2147483647.0);
+    uniform1 = seed / 2147483647.0;
+    seed = mod(16807.0 * seed, 2147483647.0);
+    uniform2 = seed / 2147483647.0;
+    normal = sqrt(-2.0 * log(uniform1)) * cos(2.0 * pi * uniform2);
+end

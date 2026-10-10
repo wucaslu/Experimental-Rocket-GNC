@@ -1,7 +1,6 @@
 function dx = rocketPlantDerivative(x,t,g,Rocket,Weather,gustNED)
 %ROCKETPLANTDERIVATIVE Continuous states; hybrid event states have zero rate.
 % Local NED translation, body rates, active Hamilton scalar-last attitude.
-%#codegen
 if nargin<5, Weather=[]; end
 if nargin<6, gustNED=rocketWeatherGust(t,Weather); end
 dx=zeros(17,1);

@@ -7,4 +7,4 @@
 *.png
 *.json
 *.log
-*.log
+/slprj

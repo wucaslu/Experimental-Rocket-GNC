@@ -1,53 +1,71 @@
 function [level,lookupEnabled,nextState,info] = rocketAirbrakeControl( ...
-    positionNEU,velocityNEU,motorDebug,requestedLevel,requestedEnable, ...
-    targetAGL,automatic,enabled,state,Rocket,Weather,CdLookup,Airbrake)
-%ROCKETAIRBRAKECONTROL Proportional coast guidance with explicit flight gates.
-% Navigation position is absolute MSL NEU; velocity is NEU ground velocity.
-% No GNSS velocity, persistent variables, timers or hidden flight state.
-% motorDebug: Environment's18-vector; indices1/2 are phase and motor mass.
-assert(numel(state)==6 && all(isfinite(state)) && isfinite(targetAGL) && targetAGL>0, ...
+    positionNEU,velocityNEU,qNB,accMeasuredBody,accBiasBody, ...
+    globalEnable,targetAGL,state,CdLookup,Airbrake)
+%ROCKETAIRBRAKECONTROL Navigation/IMU-based proportional coast guidance.
+% Inputs: positionNEU [3x1] m = estimated local North/East and absolute MSL
+% Up; velocityNEU [3x1] m/s = estimated ground North/East/Up; qNB [4x1] is
+% estimated active Hamilton body-to-NED quaternion [x;y;z;w].
+% accMeasuredBody and accBiasBody [3x1] m/s^2 are measured specific force and
+% estimated accelerometer bias. globalEnable is the overall scalar switch;
+% targetAGL is the positive apogee target above launch [m]. CdLookup contains
+% the onboard Cd table; Airbrake contains independent nominal vehicle/site
+% constants, detector thresholds, guidance weights and actuator settings.
+% Explicit state [8x1] = [actual level; ascentSeen; boostSeen; coastLatched;
+% stopLatched; forecast counter; held apogee AGL; quantized target level].
+% Outputs: level is continuous rate-limited deployment; lookupEnabled is
+% always true; nextState retains the eight-state layout. info [12x1] =
+% [height AGL; upward speed; detected coast; ascentSeen; stopLatched; gate;
+% forecast AGL; target AGL; forecast error; target level; actual level; 1].
+% Native Simulink splits state(2:5) into Flight_enable and state([1 6 7 8])
+% into Control Law. This reference combines them for independent checks.
+% No true flight states, motor status, weather, GNSS velocity or timers.
+assert(numel(state)==8 && all(isfinite(state)) && isfinite(targetAGL) && targetAGL>0, ...
     'Airbrake:InvalidState','Finite explicit state and positive AGL target required.');
-h=positionNEU(3)-Rocket.AltitudeMSL;
+h=positionNEU(3)-Airbrake.LaunchAltitudeMSL;
 v=velocityNEU(3);
-feedbackValid=all(isfinite([positionNEU(:);velocityNEU(:);motorDebug(:)]));
-burnedOut=feedbackValid && motorDebug(1)>0 && ...
-    motorDebug(2)<=Rocket.DryMass+1e-9;
-ascentSeen=state(2)>0.5 || (feedbackValid && h>=Airbrake.ArmHeightAGL && v>=Airbrake.ArmUpVelocity);
-stopped=state(3)>0.5 || (ascentSeen && burnedOut && v<=-Airbrake.StopDownSpeed);
-gate=enabled~=0 && feedbackValid && burnedOut && ascentSeen && ...
-    v<Airbrake.MaxUpVelocity && ~stopped;
-forecast=state(5);
+qNorm=norm(qNB);
+feedbackValid=all(isfinite([positionNEU(:);velocityNEU(:);qNB(:); ...
+    accMeasuredBody(:);accBiasBody(:)])) && qNorm>1e-12;
+fUp=0;
+if feedbackValid
+    specificForceNED=quatToDcm(qNB(:)/qNorm)*(accMeasuredBody(:)-accBiasBody(:));
+    fUp=-specificForceNED(3);
+end
+ascentSeen=state(2)>0.5 || (feedbackValid && ...
+    h>=Airbrake.ArmHeightAGL && v>=Airbrake.ArmUpVelocity);
+boostSeen=state(3)>0.5 || (feedbackValid && ascentSeen && ...
+    fUp>=Airbrake.BoostSpecificForceUp);
+coastLatched=state(4)>0.5 || (feedbackValid && boostSeen && ...
+    v>=Airbrake.ArmUpVelocity && fUp<=Airbrake.CoastSpecificForceUp);
+stopped=state(5)>0.5 || (feedbackValid && ascentSeen && v<=-Airbrake.StopDownSpeed);
+gate=isfinite(globalEnable) && globalEnable~=0 && feedbackValid && ...
+    ascentSeen && coastLatched && v<Airbrake.MaxUpVelocity && ~stopped;
+forecast=state(7);
 desired=0;
-counter=state(4);
+counter=state(6);
 if gate
-    if automatic~=0
-        if counter<=0
-            [forecast,predictionValid]=rocketAirbrakePredictApogee(max(0,h),v,Rocket,Weather,CdLookup,Airbrake);
-            if predictionValid
-                desired=min(1,max(0,Airbrake.ApogeeGain*(forecast-targetAGL)));
-            end
-            counter=Airbrake.PredictionEvery-1;
-        else
-            desired=state(6);
-            counter=counter-1;
+    if counter<=0
+        [forecast,predictionValid]=rocketAirbrakePredictApogee(max(0,h),v,CdLookup,Airbrake);
+        if predictionValid
+            desired=min(1,max(0,Airbrake.ApogeeGain*(forecast-targetAGL)));
         end
-    elseif requestedEnable~=0 && isfinite(requestedLevel)
-        desired=min(1,max(0,requestedLevel));
-        counter=0;
+        counter=Airbrake.PredictionEvery-1;
+    else
+        desired=state(8);
+        counter=counter-1;
     end
 else
     counter=0;
 end
-% The actuator accepts eleven target positions, 0:0.1:1. Quantize the
-% target before simulating its continuous, rate-limited physical motion.
+% Quantized actuator targets, with continuous rate-limited physical motion.
 commandBins=round(1/Airbrake.CommandStep);
 desired=min(1,max(0,round(desired*commandBins)/commandBins));
-step=Airbrake.MaxLevelRate*Rocket.Ts;
+step=Airbrake.MaxLevelRate*Airbrake.Ts;
 level=min(1,max(0,state(1)+min(step,max(-step,desired-state(1)))));
-% Keep the physical lookup active while retracting after guidance stops.
-lookupEnabled=(gate && (automatic~=0 || requestedEnable~=0)) || level>1e-12;
-nextState=[level;double(ascentSeen);double(stopped);counter;forecast;desired];
-% Log: h,v,burnout,armed,stop,gate,forecast,target,error,command,actual,lookup.
-info=[h;v;double(burnedOut);double(ascentSeen);double(stopped);double(gate); ...
+% A closed flight gate retracts the actuator; it never disables the Cd table.
+lookupEnabled=true;
+nextState=[level;double(ascentSeen);double(boostSeen);double(coastLatched); ...
+    double(stopped);counter;forecast;desired];
+info=[h;v;double(coastLatched);double(ascentSeen);double(stopped);double(gate); ...
     forecast;targetAGL;forecast-targetAGL;desired;level;double(lookupEnabled)];
 end

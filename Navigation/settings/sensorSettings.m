@@ -410,7 +410,7 @@ Sensor.GPS.PacketLossProbability = 0; % Optional receiver/transport loss
 Sensor.GPS.OutageWindows = [inf inf]; % Rows: [start_s end_s], disabled
 Sensor.GPS.QualityWindows = [inf inf 1]; % Rows: [start_s end_s sigma_scale]
 Sensor.GPS.OutlierWindows = [inf inf 0 0 0]; % [start end N E D] in s/m
-Sensor.GPS.EnforceDynamicsLimits = true; % Conservative validity scenario
+Sensor.GPS.EnforceDynamicsLimits = false; % Conservative validity scenario
 % RocketPy exports z using its documented sea-level elevation convention.
 % Select false only for a source explicitly supplied as ellipsoid height.
 Sensor.GPS.SourceAltitudeIsMSL = true;

@@ -5,7 +5,6 @@
 *.asv
 *.autosave
 *.png
-*.json
 *.log
-/slprj
 *.pdf
+*.json

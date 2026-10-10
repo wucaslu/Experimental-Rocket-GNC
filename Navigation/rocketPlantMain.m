@@ -13,6 +13,7 @@ run(fullfile(rocketNavigationDir,'settings','mekfSettings.m'));
 run(fullfile(rocketNavigationDir,'settings','rocketPlantSettings.m'));
 run(fullfile(rocketNavigationDir,'settings','rocketCdLookupSettings.m'));
 run(fullfile(rocketNavigationDir,'settings','weatherSettings.m'));
+run(fullfile(rocketNavigationDir,'settings','airbrakeSettings.m'));
 Environment.IGRF13.order = 3; % embedded Navigation reference; truth remains 13
 [Environment.IGRF13.g, Environment.IGRF13.h] = IGRF13;
 

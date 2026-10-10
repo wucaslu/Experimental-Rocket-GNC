@@ -16,8 +16,10 @@ function [level,lookupEnabled,nextState,info] = rocketAirbrakeControl( ...
 % always true; nextState retains the eight-state layout. info [12x1] =
 % [height AGL; upward speed; detected coast; ascentSeen; stopLatched; gate;
 % forecast AGL; target AGL; forecast error; target level; actual level; 1].
-% Native Simulink splits state(2:5) into Flight_enable and state([1 6 7 8])
-% into Control Law. This reference combines them for independent checks.
+% Native Simulink stores state(2:5) in Flight_enable. Within Control Law,
+% Guidance_enabled conditionally computes forecast/command; the always-running
+% Actuator_and_diagnostics maintains state([1 6 7 8]) and the current log.
+% This reference combines their behavior for independent numeric checks.
 % No true flight states, motor status, weather, GNSS velocity or timers.
 assert(numel(state)==8 && all(isfinite(state)) && isfinite(targetAGL) && targetAGL>0, ...
     'Airbrake:InvalidState','Finite explicit state and positive AGL target required.');
@@ -26,18 +28,21 @@ v=velocityNEU(3);
 qNorm=norm(qNB);
 feedbackValid=all(isfinite([positionNEU(:);velocityNEU(:);qNB(:); ...
     accMeasuredBody(:);accBiasBody(:)])) && qNorm>1e-12;
+ascentSeen=state(2)>0.5 || (feedbackValid && ...
+    h>=Airbrake.ArmHeightAGL && v>=Airbrake.ArmUpVelocity);
+stopped=state(5)>0.5 || (feedbackValid && ascentSeen && v<=-Airbrake.StopDownSpeed);
+% Force projection is needed only while identifying boost and coast. Retain
+% all input-validity checks so invalid feedback still closes permission.
+forceProjectionNeeded=feedbackValid && ascentSeen && state(4)<=0.5 && ~stopped;
 fUp=0;
-if feedbackValid
+if forceProjectionNeeded
     specificForceNED=quatToDcm(qNB(:)/qNorm)*(accMeasuredBody(:)-accBiasBody(:));
     fUp=-specificForceNED(3);
 end
-ascentSeen=state(2)>0.5 || (feedbackValid && ...
-    h>=Airbrake.ArmHeightAGL && v>=Airbrake.ArmUpVelocity);
-boostSeen=state(3)>0.5 || (feedbackValid && ascentSeen && ...
+boostSeen=state(3)>0.5 || (forceProjectionNeeded && ...
     fUp>=Airbrake.BoostSpecificForceUp);
-coastLatched=state(4)>0.5 || (feedbackValid && boostSeen && ...
+coastLatched=state(4)>0.5 || (forceProjectionNeeded && boostSeen && ...
     v>=Airbrake.ArmUpVelocity && fUp<=Airbrake.CoastSpecificForceUp);
-stopped=state(5)>0.5 || (feedbackValid && ascentSeen && v<=-Airbrake.StopDownSpeed);
 gate=isfinite(globalEnable) && globalEnable~=0 && feedbackValid && ...
     ascentSeen && coastLatched && v<Airbrake.MaxUpVelocity && ~stopped;
 forecast=state(7);

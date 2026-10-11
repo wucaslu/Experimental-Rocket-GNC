@@ -15,5 +15,5 @@ if isfile(weatherBaselineFile)
     weatherSummary = summarizeRocketWeather(out,Rocket,Weather,weatherBaseline,rocketResultsDir);
 end
 save(fullfile(rocketResultsDir,'rocket-full-simulation.mat'),'out','Rocket','Weather', ...
-    'rocketSummary','weatherSummary');
+    'rocketSummary','weatherSummary','WeatherForecastInfo');
 disp(rocketSummary);

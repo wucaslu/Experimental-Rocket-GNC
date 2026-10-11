@@ -1,8 +1,11 @@
 %% Explicit weather configuration for the rocket truth plant (SI units).
 % Run after rocketPlantSettings. Defaults preserve the existing dry ISA and
 % mean wind exactly. Set UseProfile=1 and rebuild after station/profile edits.
-% These editable profiles and deterministic gusts are a synthetic scenario,
-% not a measured sounding, weather forecast or validated Dryden turbulence.
+% These settings supply the synthetic fallback/base profile and explicit gusts.
+% rocketPlantMain then imports forecast profiles when enabled in
+% weatherForecastSettings.m. Rebuilding afterward replaces the forecast.
+% The deterministic gusts are separate from forecast mean wind and are not
+% a measured turbulence record or validated Dryden turbulence model.
 Weather = struct();
 Weather.UseProfile = 0;
 Weather.StationAltitudeMSL = Rocket.AltitudeMSL;      % geometric MSL [m]

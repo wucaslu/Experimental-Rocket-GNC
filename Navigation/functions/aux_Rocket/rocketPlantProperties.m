@@ -1,39 +1,49 @@
-function [thrust,mass,inertia,massRate,inertiaRate] = rocketPlantProperties(t,Rocket)
-%ROCKETPLANTPROPERTIES Motor mass and inertia from exact linear thrust impulse.
-% Propellant flow is proportional to thrust (constant effective exhaust
-% velocity). The normalized cumulative impulse specifies knot values. Dry
-% and propellant inertias are diagonal and referenced to a coincident fixed
-% CM; movement of CM and parallel-axis terms are deliberately approximated.
-tau=t-Rocket.IgnitionTime;
-n=numel(Rocket.ThrustTime);
-totalImpulse=0;
-for i=1:n-1
-    totalImpulse=totalImpulse+0.5*(Rocket.ThrustForce(i)+Rocket.ThrustForce(i+1))* ...
-        (Rocket.ThrustTime(i+1)-Rocket.ThrustTime(i));
-end
-thrust=0;
-fraction=1;
-massRate=0;
-if tau>=Rocket.ThrustTime(n)
-    fraction=0;
-elseif tau>=Rocket.ThrustTime(1)
-    k=1;
-    for i=1:n-1
-        if tau>=Rocket.ThrustTime(i) && tau<Rocket.ThrustTime(i+1)
-            k=i;
-            break
-        end
-    end
-    dt=tau-Rocket.ThrustTime(k);
-    slope=(Rocket.ThrustForce(k+1)-Rocket.ThrustForce(k))/ ...
-        (Rocket.ThrustTime(k+1)-Rocket.ThrustTime(k));
-    thrust=max(0,Rocket.ThrustForce(k)+slope*dt);
-    segmentImpulse=Rocket.ThrustForce(k)*dt+0.5*slope*dt*dt;
-    usedImpulse=Rocket.ThrustCumulativeImpulse(k)+segmentImpulse/max(totalImpulse,eps);
-    fraction=max(0,min(1,1-usedImpulse));
-    massRate=-Rocket.PropellantMass*thrust/max(totalImpulse,eps);
-end
-mass=Rocket.DryMass+fraction*Rocket.PropellantMass;
-inertia=Rocket.DryInertia+fraction*Rocket.PropellantInertia;
-inertiaRate=Rocket.PropellantInertia*(massRate/max(Rocket.PropellantMass,eps));
+function [thrust,mass,inertia,massRate,inertiaRate,MassProperties] = rocketPlantProperties(t,Rocket)
+%ROCKETPLANTPROPERTIES Assemble airframe and independent motor properties.
+% Inputs: absolute model time t [s] and Rocket configuration, including its
+% prepared Motor.StaticFire, numeric Motor.Type and Motor.Properties.
+% Outputs: thrust [N], total mass [kg], inertia about instantaneous CM
+% [3x1 kg*m^2], mass rate [kg/s], CM inertia rate [3x1 kg*m^2/s], and numeric
+% MassProperties containing body CM/its two time derivatives, mass second
+% derivative and inertia/inertia rate about the fixed body reference O.
+% Component centers lie on body +Z. Intrinsic component inertias are about
+% their own centers; parallel-axis shifts are evaluated at every RK4 stage.
+[thrust,motorMass,~,massRate,~,~,Geometry] = rocketMotorModel( ...
+    t-Rocket.IgnitionTime,Rocket.Motor.StaticFire,Rocket.Motor.Type, ...
+    Rocket.Motor.Properties);
+mass=Rocket.DryMass+motorMass;
+massAcceleration=sum(Geometry.MassAccelerations);
+firstMoment=Rocket.DryMass*Rocket.DryCenterOfMassZ+ ...
+    sum(Geometry.Masses.*Geometry.CentersZ);
+firstMomentRate=sum(Geometry.MassRates.*Geometry.CentersZ+ ...
+    Geometry.Masses.*Geometry.CenterRatesZ);
+firstMomentAcceleration=sum(Geometry.MassAccelerations.*Geometry.CentersZ+ ...
+    2*Geometry.MassRates.*Geometry.CenterRatesZ+ ...
+    Geometry.Masses.*Geometry.CenterAccelerationsZ);
+centerZ=firstMoment/mass;
+centerRateZ=(firstMomentRate-massRate*centerZ)/mass;
+centerAccelerationZ=(firstMomentAcceleration-massAcceleration*centerZ- ...
+    2*massRate*centerRateZ)/mass;
+referenceShift=Rocket.DryMass*Rocket.DryCenterOfMassZ^2+ ...
+    sum(Geometry.Masses.*Geometry.CentersZ.^2);
+referenceShiftRate=sum(Geometry.MassRates.*Geometry.CentersZ.^2+ ...
+    2*Geometry.Masses.*Geometry.CentersZ.*Geometry.CenterRatesZ);
+referenceInertia=Rocket.DryInertia+sum(Geometry.Inertias,2)+ ...
+    [referenceShift;referenceShift;0];
+referenceInertiaRate=sum(Geometry.InertiaRates,2)+ ...
+    [referenceShiftRate;referenceShiftRate;0];
+offsetsZ=Geometry.CentersZ-centerZ;
+offsetRatesZ=Geometry.CenterRatesZ-centerRateZ;
+cmShift=Rocket.DryMass*(Rocket.DryCenterOfMassZ-centerZ)^2+ ...
+    sum(Geometry.Masses.*offsetsZ.^2);
+cmShiftRate=-2*Rocket.DryMass*(Rocket.DryCenterOfMassZ-centerZ)*centerRateZ+ ...
+    sum(Geometry.MassRates.*offsetsZ.^2+ ...
+    2*Geometry.Masses.*offsetsZ.*offsetRatesZ);
+inertia=Rocket.DryInertia+sum(Geometry.Inertias,2)+[cmShift;cmShift;0];
+inertiaRate=sum(Geometry.InertiaRates,2)+[cmShiftRate;cmShiftRate;0];
+MassProperties=struct('CenterOfMass',[0;0;centerZ], ...
+    'CenterOfMassRate',[0;0;centerRateZ], ...
+    'CenterOfMassAcceleration',[0;0;centerAccelerationZ], ...
+    'MassAcceleration',massAcceleration,'ReferenceInertia',referenceInertia, ...
+    'ReferenceInertiaRate',referenceInertiaRate);
 end

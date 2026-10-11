@@ -1,7 +1,7 @@
 function Rocket = rocketPlantBuildAero(Rocket)
 %ROCKETPLANTBUILDAERO Derive nose, fin-set and tail geometry coefficients.
 % Body +Z is noseward; input reference positions are relative to the common
-% plant CM. Surface-local CP distances are positive aft, hence subtraction
+% body reference O. Surface-local CP distances are positive aft, hence subtraction
 % from the nose tip, fin root leading edge or tail top body coordinate.
 % The flat-plate fin coefficient at runtime is numerator /
 % (2 + sqrt((beta(Mach)*planform)^2 + 4)); the fin-set multiplier is separate.

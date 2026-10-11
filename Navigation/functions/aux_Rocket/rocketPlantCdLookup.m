@@ -1,5 +1,5 @@
 function [cd,query] = rocketPlantCdLookup(speedAirMps,controlLevel,lookup)
-%ROCKETPLANTCDLOOKUP Absolute Cd at CM airspeed and control level.
+%ROCKETPLANTCDLOOKUP Absolute Cd at airspeed and control level.
 % [cd,query] = rocketPlantCdLookup(speedAirMps,controlLevel,CdLookup)
 % uses bilinear interpolation: rows=airspeed [m/s], columns=control 0:0.1:1.
 % Finite queries outside the axes are clipped, with no extrapolation.

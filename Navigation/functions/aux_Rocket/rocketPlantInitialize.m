@@ -4,6 +4,8 @@ function x = rocketPlantInitialize(Rocket)
 %      apogeeTime;drogueDeploymentTime;mainDeploymentTime].
 % Body +z points toward the nose. Inclination is above the horizontal;
 % heading is clockwise from North and roll is about body +z, all radians.
+% Position/velocity track fixed body reference O, initially at the launch
+% origin; the moving mass centroid is never substituted into these states.
 
 inc = Rocket.LaunchInclination;
 head = Rocket.LaunchHeading;

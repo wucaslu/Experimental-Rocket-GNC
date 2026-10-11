@@ -1,8 +1,11 @@
-function [forceB,momentB,aero] = rocketPlantAerodynamics(x,t,Rocket,Weather,gustNED,cdCommand,cdOverrideEnabled)
+function [forceB,momentB,aero] = rocketPlantAerodynamics(x,t,Rocket,Weather,gustNED,cdCommand,cdOverrideEnabled,MassProperties)
 %ROCKETPLANTAERODYNAMICS Body axial drag and component Barrowman loads.
-% Body +Z is noseward, positions are relative to the common plant CM.
+% Body +Z is noseward; surface stations/moments use fixed body reference O.
 % Nose, fins and tail each see wind at their CP height and rotational flow.
-% CM density/sound speed are used, as in RocketPy's Barrowman flight path.
+% Reference-origin density/sound speed follow the existing Barrowman model.
+% Static margin uses the instantaneous CM; local velocities/heights use
+% fixed stations because burning propellant does not relocate the surfaces.
+% Legacy fields machCM/dynamicPressureCM describe the reference-origin flow.
 % The linear normal-force law is an approximation at large angle of attack.
 % Optional cdCommand replaces absolute axial Cd when cdOverrideEnabled=true.
 % Defaults (0,false) retain the powered/coast Mach curves and component laws.
@@ -13,6 +16,7 @@ if nargin<4, Weather=[]; end
 if nargin<5, gustNED=rocketWeatherGust(t,Weather); end
 if nargin<6, cdCommand=0; end
 if nargin<7, cdOverrideEnabled=false; end
+if nargin<8, [~,~,~,~,~,MassProperties]=rocketPlantProperties(t,Rocket); end
 [cdCommand,cdOverrideEnabled]=rocketPlantValidateCdControl(cdCommand,cdOverrideEnabled);
 R=rocketPlantRotation(x(7:10));
 omega=x(11:13);
@@ -23,7 +27,7 @@ speedCM=norm(vCM);
 machCM=speedCM/soundSpeed;
 dynamicPressureCM=0.5*rho*speedCM^2;
 burning=t>=Rocket.IgnitionTime && ...
-    t<Rocket.IgnitionTime+Rocket.ThrustTime(end);
+    t<Rocket.IgnitionTime+Rocket.Motor.StaticFire.Time(end);
 if burning
     cdNominal=rocketPlantInterpolate(Rocket.AeroMach,Rocket.AeroCdPowered,machCM);
 else
@@ -42,7 +46,7 @@ momentB=zeros(3,1);
 if Rocket.AeroEnabled<0.5
     return
 end
-% RocketPy's forward-flight drag model applies axial drag at the CM.
+% The axial body model is a centerline force; its moment about O is zero.
 forceB(3)=-dynamicPressureCM*Rocket.ReferenceArea*cd;
 weightedCP=zeros(3,1);
 totalSlope=0;
@@ -88,7 +92,7 @@ for i=1:n
 end
 if abs(totalSlope)>1e-10
     aero.cpWeighted=weightedCP/totalSlope;
-    aero.staticMargin=-aero.cpWeighted(3)/(2*Rocket.BodyRadius);
+    aero.staticMargin=(MassProperties.CenterOfMass(3)-aero.cpWeighted(3))/(2*Rocket.BodyRadius);
 end
 end
 

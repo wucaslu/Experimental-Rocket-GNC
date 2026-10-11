@@ -37,8 +37,10 @@ function summary = summarizeRocketPlant(out,Rocket,outputDirectory)
     end
     summary.LandingPositionNEUM = [x(end,1);x(end,2);Rocket.AltitudeMSL];
     summary.MainDeploymentHeightAGLM = interp1(t,-x(:,3),x(end,17));
-    summary.DryMassKg = Rocket.DryMass;
-    summary.IgnitionMassKg = Rocket.DryMass+Rocket.PropellantMass;
+    summary.DryMassKg = Rocket.DryMass+Rocket.Motor.Properties.DryMass;
+    [~,summary.BurnoutMassKg] = rocketPlantProperties( ...
+        Rocket.IgnitionTime+Rocket.Motor.StaticFire.Time(end),Rocket);
+    [~,summary.IgnitionMassKg] = rocketPlantProperties(Rocket.IgnitionTime-1,Rocket);
     if ~hasNavigation
         summary.NavigationStatus = 'Missing navigation position logs; metrics omitted.';
     end

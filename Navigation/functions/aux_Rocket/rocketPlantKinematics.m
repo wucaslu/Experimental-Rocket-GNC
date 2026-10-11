@@ -2,6 +2,8 @@ function [q,w,p_NEU,v_NEU,pressure] = rocketPlantKinematics(x,Rocket,Weather)
 %ROCKETPLANTKINEMATICS Existing Environment truth interface.
 % Quaternion is body->NED xyzw. Position is [North;East;absolute MSL Up],
 % velocity [North;East;Up]. Ellipsoid conversion remains in GNSS model.
+% Translation refers to fixed body reference O, which never relocates as
+% propellant burns. The instantaneous mass centroid is evaluated separately.
 if nargin<3, Weather=[]; end
 q=x(7:10)/max(norm(x(7:10)),eps);
 w=x(11:13);

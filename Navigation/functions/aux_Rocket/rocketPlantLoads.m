@@ -1,13 +1,16 @@
 function [aN,alphaB,dbg,cdInfo] = rocketPlantLoads(x,t,g,Rocket,Weather,gustNED,cdCommand,cdOverrideEnabled)
 %ROCKETPLANTLOADS Translational and rotational truth, including constraints.
-% Fixed-CM diagonal Euler equation includes approximate exhaust angular
-% flux: I*alpha = M - omega x (I*omega) + (mdot*Snozzle-Idot)*omega.
-% NozzleGyration is the diagonal exhaust-stream gyration tensor [m^2].
+% States translate a fixed body reference O; the instantaneous CM changes
+% with propellant depletion. Coupled fixed-origin variable-mass equations
+% include CM velocity/acceleration, parallel-axis inertia and exhaust flux.
+% NozzleGyration is the existing approximate tensor about fixed O [m^2].
 % Nose, fins and tail supply separate Barrowman forces and moments.
 % AngularDamping is optional residual dimensional damping [Nm s].
 % Chute forces use attachment air velocity and smooth finite inflation;
 % their deployment changes force continuously and never resets velocity.
-% Earth rotation, moving-CM coupling and canopy swing are omitted.
+% Earth rotation and canopy swing are omitted. Centers are constrained to +Z.
+% Reference: RocketPy generalized equations and their fixed dry-CM state.
+% https://docs.rocketpy.org/en/latest/technical/equations_of_motion_v1.html
 % Weather is an explicit
 % configuration and gust signal, held during each major integration step.
 % Optional absolute body-Cd override is forwarded to the aerodynamic model.
@@ -20,9 +23,10 @@ R=rocketPlantRotation(x(7:10));
 w=x(11:13);
 hAGL=-x(3);
 [windN,rho,pressure,soundSpeed]=rocketWeatherConditions(Rocket.AltitudeMSL+hAGL,Rocket,Weather,gustNED);
-[thrust,mass,I,massRate,inertiaRate]=rocketPlantProperties(t,Rocket);
+[thrust,mass,I,massRate,~,MassProperties]=rocketPlantProperties(t,Rocket);
 vAirB=R.'*(x(4:6)-windN);
-[fAero,mAero,aero]=rocketPlantAerodynamics(x,t,Rocket,Weather,gustNED,cdCommand,cdOverrideEnabled);
+[fAero,mAero,aero]=rocketPlantAerodynamics(x,t,Rocket,Weather,gustNED, ...
+    cdCommand,cdOverrideEnabled,MassProperties);
 mach=norm(vAirB)/soundSpeed;
 thrustDirection=Rocket.ThrustDirection/max(norm(Rocket.ThrustDirection),eps);
 fThrust=thrust*thrustDirection;
@@ -52,8 +56,22 @@ fMain=-0.5*rho*mainCdS*norm(vMain)*vMain;
 forceB=forceB+fDrogue+fMain;
 momentB=momentB+cross(Rocket.DrogueAttachment,fDrogue)+ ...
     cross(Rocket.MainAttachment,fMain);
-aN=R*forceB/mass+[0;0;g];
-alphaB=(momentB-cross(w,I.*w)+(massRate*Rocket.NozzleGyration-inertiaRate).*w)./I;
+% All load moments above use FIXED body stations. The coupled formulation
+% subtracts the moving CM's force moment without moving those stations or
+% using a CM-relative lever arm in their local wind/rotational velocities.
+c=MassProperties.CenterOfMass;
+cDot=MassProperties.CenterOfMassRate;
+cDDot=MassProperties.CenterOfMassAcceleration;
+weightB=R.'*[0;0;mass*g];
+nozzle=Rocket.ThrustOffset;
+T03=2*massRate*(nozzle-c)-2*mass*cDot;
+T20=-cross(w,cross(w,mass*c))+cross(w,T03)+forceB+weightB- ...
+    mass*cDDot-2*massRate*cDot+MassProperties.MassAcceleration*(nozzle-c);
+T21=-cross(w,MassProperties.ReferenceInertia.*w)+ ...
+    (massRate*Rocket.NozzleGyration-MassProperties.ReferenceInertiaRate).*w+ ...
+    cross(c,weightB)+momentB;
+alphaB=(T21-cross(c,T20))./I;
+aN=R*(T20/mass+cross(c,alphaB));
 phase=x(14);
 if phase<0.5 || phase>4.5
     aN=zeros(3,1);

@@ -1,7 +1,9 @@
 function [f_B,B_B,dbg,cdInfo] = rocketPlantForces(x,t,g,B_NED,Rocket,Weather,gustNED,cdCommand,cdOverrideEnabled)
 %ROCKETPLANTFORCES Physical IMU specific force and body magnetic field.
 % Includes rail/pad/ground support and acceleration at a rigid-body IMU
-% offset. IMUOffset is measured from the lumped CM in body axes [m].
+% offset. IMUOffset is a FIXED station from body reference O in body axes [m].
+% Moving-CM acceleration is already included in the reference acceleration
+% returned by rocketPlantLoads; the physical IMU station does not move.
 % dbg is the fixed 18-vector documented in rocketPlantLoads.
 % Optional Cd command/enable use the same body drag as the state integrator.
 % cdInfo is the separate five-element control diagnostic from rocketPlantLoads.

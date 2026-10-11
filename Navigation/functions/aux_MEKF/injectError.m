@@ -1,5 +1,12 @@
 function [q, v, p, bg_out, ba_out, P] = injectError( ...
     dx, q, v, p, bg_in, ba_in, P, estimate_bias, estimate_acc_bias)
+%INJECTERROR Apply the MEKF attitude and additive navigation corrections.
+% Inputs: dx is the error-state correction; q/v/p and bg_in/ba_in are the
+% nominal quaternion, NED velocity/position and IMU biases; P is their error
+% covariance, optionally including pressure-scale state 16. The enable flags
+% select independent gyro/accelerometer bias learning.
+% Outputs: corrected nominal states and covariance after the attitude-error
+% reset. An optional scale-state correction is applied by the caller.
 
     if nargin < 9, estimate_acc_bias = estimate_bias; end
 
@@ -35,7 +42,7 @@ function [q, v, p, bg_out, ba_out, P] = injectError( ...
     end
     
     % Reset transformation after attitude-error injection.
-    Greset = eye(15);
+    Greset = eye(size(P,1));
     Greset(1:3,1:3) = eye(3) - 0.5 * skew3(dtheta);
     
     P = Greset * P * Greset';

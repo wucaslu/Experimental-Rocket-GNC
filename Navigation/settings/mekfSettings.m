@@ -37,6 +37,28 @@ MEKF.sigma_zp_p   = 1.0e-2; % Stationary local position [m].
 % identify barometer gain or drift, or accelerometer/magnetometer calibration.
 MEKF.baro_zero_enabled = true;
 
+% GNSS-position-aided pressure-profile adaptation (no forecast inputs).
+% P(D,s) = Ppad * (P_ISA(h0-D)/P_ISA(h0))^s. The RocketPlant MEKF
+% carries s as error state 16 and explicit nominal state in a Unit Delay.
+% Ppad is averaged on the stationary pad and held in flight. Its finite
+% averaging uncertainty is not an independent fresh noise at every sample.
+% The single scale approximates a profile; the model-noise term below allows
+% residual structure, but covariance still requires statistical validation.
+% Setting this flag false retains the original fixed-ISA correction for tests.
+MEKF.baro_scale_enabled = true;
+MEKF.baro_scale_initial = 1.0;         % Dimensionless profile exponent.
+MEKF.baro_scale_initial_sigma = 0.10;  % Initial scale standard deviation [-].
+MEKF.baro_scale_diffusion = 1.0e-3;    % Continuous diffusion [1/sqrt(s)].
+MEKF.baro_scale_min = 0.70;
+MEKF.baro_scale_max = 1.30;
+MEKF.baro_scale_max_rate = 0.05;       % Bound per correction [1/s].
+MEKF.baro_scale_min_height = 100.0;    % Minimum |local Down| for learning [m].
+MEKF.baro_scale_max_gnss_gap = 0.50;   % Age of accepted GNSS reference [s].
+MEKF.baro_scale_max_gnss_sigma = 20.0; % Maximum reported Down sigma [m].
+MEKF.baro_scale_min_pad_samples = 100;
+MEKF.baro_scale_pressure_model_sigma = 30.0; % Profile residual allowance [Pa].
+MEKF.baro_scale_nis_limit = 25.0;      % One-dimensional pressure outlier gate.
+
 % Estimate both bias groups on the stationary pad and freeze them in flight.
 % A single stationary pose cannot separate additive bias from gain/alignment
 % errors: ba remains an effective offset until an independent IMU calibration.

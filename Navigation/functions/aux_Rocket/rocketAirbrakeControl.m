@@ -16,10 +16,12 @@ function [level,lookupEnabled,nextState,info] = rocketAirbrakeControl( ...
 % always true; nextState retains the eight-state layout. info [12x1] =
 % [height AGL; upward speed; detected coast; ascentSeen; stopLatched; gate;
 % forecast AGL; target AGL; forecast error; target level; actual level; 1].
-% Native Simulink stores state(2:5) in Flight_enable. Within Control Law,
-% Guidance_enabled conditionally computes forecast/command; the always-running
-% Actuator_and_diagnostics maintains state([1 6 7 8]) and the current log.
-% This reference combines their behavior for independent numeric checks.
+% Native Simulink stores state(2:5) in Flight_enable, state(6:8) in
+% Control Law and physical deployment state(1) in the root Actuator.
+% Guidance_enabled conditionally computes forecast/command. Control outputs
+% controller diagnostics independently; performance analysis combines them
+% with the root Actuator's position outside Control to form the twelve-field log.
+% This reference combines Control and Actuator behavior for numeric checks.
 % No true flight states, motor status, weather, GNSS velocity or timers.
 assert(numel(state)==8 && all(isfinite(state)) && isfinite(targetAGL) && targetAGL>0, ...
     'Airbrake:InvalidState','Finite explicit state and positive AGL target required.');

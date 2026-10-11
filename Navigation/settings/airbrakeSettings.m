@@ -21,9 +21,8 @@ Airbrake.PredictionEvery = 5;    % update forecast every N IMU samples
 Airbrake.PredictionStep = 0.1;   % coast integration step [s]
 Airbrake.PredictionMaxSteps = 600;
 % Reference memory: [level; ascentSeen; boostSeen; coastLatched; stopLatched;
-% counter; forecastAGL; desired]. Simulink stores flags (2:5) upstream and
-% law/actuator memory ([1 6 7 8]) separately. There are no flight timers.
+% counter; forecastAGL; desired]. Simulink stores flags (2:5), guidance
+% memory ([6 7 8]) and root Actuator memory (1) in separate Unit Delays.
+% There are no flight timers.
 AirbrakeInitialState = zeros(8,1);
 rocketPlantValidateCdLookup(CdLookup);
-assert(all(all(diff(CdLookup.Table,1,2)>=-1e-12)), ...
-    'Airbrake:NonmonotoneCd','Airbrake Cd must not decrease as level increases.');

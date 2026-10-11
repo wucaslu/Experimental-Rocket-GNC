@@ -16,6 +16,10 @@ MEKF.sigma_bg = 1.0e-3;
 MEKF.sigma_ba = 8.2e-4;
 
 MEKF.sigma_acc_tilt = 5.0e-2; % Normalized direction [-].
+% Validated through landing with position-only GNSS and frozen flight biases:
+% nominal 3 km target, plus a 2.9 km target with stronger wind and gusts.
+% Evidence: RocketPlant/validation/mekf-tuning-v1. Correlated errors and the
+% order-3 magnetic reference still limit statistical covariance accuracy.
 MEKF.sigma_mag      = 3.0e-2; % Normalized magnetic direction uncertainty [-].
 MEKF.sigma_baro_p   = 10.0;   % Pressure noise [Pa], after startup zeroing.
 MEKF.sigma_gps_p    = [1; 1; 5]; % Legacy position [m]; active R uses GNSS fix metadata.

@@ -9,6 +9,8 @@ function [forceB,momentB,aero] = rocketPlantAerodynamics(x,t,Rocket,Weather,gust
 % The linear normal-force law is an approximation at large angle of attack.
 % Optional cdCommand replaces absolute axial Cd when cdOverrideEnabled=true.
 % Defaults (0,false) retain the powered/coast Mach curves and component laws.
+% Rocket.UseCdLookup=0 also forces the Mach curves for open-loop analysis,
+% including callers that normally request the actuator-position Cd table.
 % References: RocketPy AeroSurface.compute_forces_and_moments and Fins.
 % https://docs.rocketpy.org/en/latest/_modules/rocketpy/rocket/aero_surface/aero_surface.html
 % https://docs.rocketpy.org/en/latest/_modules/rocketpy/rocket/aero_surface/fins/fins.html
@@ -18,6 +20,9 @@ if nargin<6, cdCommand=0; end
 if nargin<7, cdOverrideEnabled=false; end
 if nargin<8, [~,~,~,~,~,MassProperties]=rocketPlantProperties(t,Rocket); end
 [cdCommand,cdOverrideEnabled]=rocketPlantValidateCdControl(cdCommand,cdOverrideEnabled);
+if isfield(Rocket,'UseCdLookup')
+    cdOverrideEnabled=cdOverrideEnabled && Rocket.UseCdLookup>0.5;
+end
 R=rocketPlantRotation(x(7:10));
 omega=x(11:13);
 hCM=-x(3);

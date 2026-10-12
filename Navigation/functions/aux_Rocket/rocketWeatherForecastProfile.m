@@ -47,6 +47,10 @@ for k=1:numel(fields)
         all(isfinite(value(:))), ...
         'RocketWeatherForecast:InvalidInput','Weather.%s must remain numeric; keep metadata separately.',fields{k});
 end
+% Forecast P/T/RH use the moist mixture, replacing any imported rho/a mode.
+if isfield(Weather,'UseTabulatedThermodynamics')
+    Weather.UseTabulatedThermodynamics=0;
+end
 assert(isdatetime(requestedTimeUTC) && isscalar(requestedTimeUTC) && ...
     ~isnat(requestedTimeUTC) && strcmp(requestedTimeUTC.TimeZone,'UTC'), ...
     'RocketWeatherForecast:InvalidTime','requestedTimeUTC must be a scalar datetime with TimeZone UTC.');

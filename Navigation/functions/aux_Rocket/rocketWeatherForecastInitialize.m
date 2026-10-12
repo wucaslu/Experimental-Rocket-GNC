@@ -11,7 +11,7 @@ function rocketWeatherForecastInitialize(originalInitFcn,dateTimeUTC)
 assert(ischar(originalInitFcn) && isrow(originalInitFcn) && ...
     (ischar(dateTimeUTC) || (isstring(dateTimeUTC) && isscalar(dateTimeUTC))), ...
     'RocketWeatherForecast:InvalidInitialization','Use callback text and a resolved UTC date.');
-names={'RocketWeatherForecastDateTimeUTC','RocketWeatherForecastCacheMode'};
+names={'RocketWeatherForecastDateTimeUTC','RocketWeatherForecastCacheMode','RocketWeatherSource'};
 previous=cell(size(names));
 present=false(size(names));
 for k=1:numel(names)
@@ -21,6 +21,7 @@ end
 restore=onCleanup(@() restoreInputs(names,present,previous));
 assignin('base',names{1},char(dateTimeUTC));
 assignin('base',names{2},'cache');
+assignin('base',names{3},'forecast');
 evalin('base',originalInitFcn);
 end
 

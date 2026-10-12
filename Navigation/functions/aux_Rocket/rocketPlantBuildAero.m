@@ -3,7 +3,9 @@ function Rocket = rocketPlantBuildAero(Rocket)
 % Body +Z is noseward; input reference positions are relative to the common
 % body reference O. Surface-local CP distances are positive aft, hence subtraction
 % from the nose tip, fin root leading edge or tail top body coordinate.
-% The flat-plate fin coefficient at runtime is numerator /
+% Optional FinLiftSlope2D is a finite positive small-angle airfoil lift slope
+% [1/rad]; the default 2*pi represents flat plates. The fin coefficient at
+% runtime is numerator /
 % (2 + sqrt((beta(Mach)*planform)^2 + 4)); the fin-set multiplier is separate.
 % Barrowman/Diederich geometry and roll corrections follow these references:
 % https://docs.rocketpy.org/en/latest/_modules/rocketpy/rocket/aero_surface/fins/_base_fin.html
@@ -17,6 +19,15 @@ s = Rocket.FinSpan;
 sweep = Rocket.FinSweepLength;
 n = Rocket.FinNumber;
 cant = Rocket.FinCant;
+liftSlope2D = 2*pi;
+if isfield(Rocket,'FinLiftSlope2D')
+    liftSlope2D = Rocket.FinLiftSlope2D;
+end
+assert(isnumeric(liftSlope2D) && isreal(liftSlope2D) && ...
+    isscalar(liftSlope2D) && isfinite(liftSlope2D) && liftSlope2D>0, ...
+    'RocketPlant:InvalidFinLiftSlope', ...
+    'FinLiftSlope2D must be a finite real positive numeric scalar in 1/rad.');
+liftSlope2D = full(double(liftSlope2D));
 assert(R>0 && cr>0 && ct>=0 && s>0 && n>=3 && n==fix(n), ...
     'RocketPlant:InvalidFinGeometry', ...
     'Radius, root chord and exposed span must be positive; use at least three fins.');
@@ -78,7 +89,9 @@ Rocket.AeroSurfaceArea = area*ones(3,1);
 Rocket.AeroSurfaceDiameter = diameter*ones(3,1);
 Rocket.AeroSurfaceCNa = [2*(Rocket.NoseBaseRadius/R)^2; 0; ...
     2*((Rocket.TailBottomRadius/R)^2-(Rocket.TailTopRadius/R)^2)];
-Rocket.AeroFinPlanform = [0; AR/cos(gamma); 0];
+% Diederich correlation uses the measured 2-D slope in its denominator.
+% The numerator remains 2*pi*AR*Af/area because that slope cancels there.
+Rocket.AeroFinPlanform = [0; (2*pi/liftSlope2D)*AR/cos(gamma); 0];
 Rocket.AeroFinLiftNumerator = [0; 2*pi*AR*Af/area; 0];
 Rocket.AeroFinLiftMultiplier = [0; nFactor*kLift; 0];
 Rocket.AeroRollForceScale = [0; kForce*n*(Yma+R)/diameter; 0];

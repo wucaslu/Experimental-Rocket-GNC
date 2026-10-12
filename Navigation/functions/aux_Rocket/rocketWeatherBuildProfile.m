@@ -11,6 +11,10 @@ function Weather = rocketWeatherBuildProfile(Weather)
 % https://www.ncl.ucar.edu/Document/Functions/Built-in/hydro.shtml
 % https://www.weather.gov/media/epz/wxcalc/vaporPressure.pdf
 rocketWeatherValidateConfig(Weather,false);
+% Rebuilding synthetic weather replaces any imported thermodynamics.
+if isfield(Weather,'UseTabulatedThermodynamics')
+    Weather.UseTabulatedThermodynamics=0;
+end
 radius=6356766;
 lower=Weather.ProfileMinAltitudeMSL;
 upper=Weather.ProfileMaxAltitudeMSL;

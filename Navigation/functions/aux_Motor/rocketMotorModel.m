@@ -22,7 +22,9 @@ function [thrust,motorMass,motorInertia,massRate,inertiaRate,remaining,Geometry]
 %       vectors by component column [kg*m^2], [kg*m^2/s]. CenterOfMass,
 %       CenterOfMassRate and CenterOfMassAcceleration are 3x1 body vectors
 %       [m], [m/s], [m/s^2], with only the axial component nonzero.
-% Channel centers and intrinsic inertias interpolate with remaining fraction.
+% Channel centers interpolate with remaining fraction. Enabled solid BATES
+% inertia follows the remaining mass's evolving bore radius and grain height;
+% other channels retain endpoint interpolation.
 % Parallel-axis terms place total motor inertia at the current motor center.
 % Measured mass profiles interpolate linearly. Absent profiles use exact
 % integrated piecewise-linear thrust with constant effective exhaust velocity.
@@ -104,6 +106,10 @@ Inertias = [Properties.DryInertia, ...
     Properties.OxidizerResidualInertia+oxidizerFraction*oxidizerInertiaChange];
 InertiaRates = [zeros(3,1),fuelFractionRate*fuelInertiaChange, ...
     oxidizerFractionRate*oxidizerInertiaChange];
+if typeCode==1 && isfield(Properties,'GrainInertiaEnabled') && Properties.GrainInertiaEnabled>0.5
+    [Inertias(:,2),InertiaRates(:,2)] = ...
+        rocketMotorSolidGrainInertia(remaining(1),MassRates(2),Properties);
+end
 fuelCenterChange = Properties.FuelInitialCenterOfMassZ-Properties.FuelResidualCenterOfMassZ;
 oxidizerCenterChange = Properties.OxidizerInitialCenterOfMassZ-Properties.OxidizerResidualCenterOfMassZ;
 CentersZ = [Properties.DryCenterOfMassZ; ...

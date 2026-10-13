@@ -6,7 +6,9 @@ function [apogeeAGL,valid] = rocketAirbrakePredictApogee(hAGL,vUp,CdLookup,Airbr
 % altitude and numerical forecast settings, independently of the truth plant.
 % Outputs: apogeeAGL [m] is the predicted peak above launch; valid is false
 % for invalid initial estimates or an unfinished coast integration.
-% Uses dry standard-atmosphere density and level-zero CSV Cd. Wind, actual
+% Uses dry standard-atmosphere density and level-zero absolute CSV Cd. For
+% an added-airbrake source, Airbrake.NominalMach/NominalCdCoast supply the
+% independent nominal coast curve; zero deployment adds no drag. Wind, actual
 % weather, horizontal velocity, attitude and normal forces are unobserved.
 % Midpoint integration stops at the vertical zero crossing, not a flight timer.
 apogeeAGL=hAGL;
@@ -35,9 +37,16 @@ end
 
 function a=acceleration(h,v,CdLookup,Airbrake)
 altitudeMSL=Airbrake.LaunchAltitudeMSL+h;
-rho=rocketPlantAtmosphere(altitudeMSL);
-cd=interp1(CdLookup.VelocityBreakpoints,CdLookup.Table(:,1), ...
-    min(CdLookup.VelocityBreakpoints(end),max(CdLookup.VelocityBreakpoints(1),abs(v))), 'linear');
+[rho,~,soundSpeed]=rocketPlantAtmosphere(altitudeMSL);
+if isfield(CdLookup,'Mode')
+    assert(isfield(Airbrake,'NominalMach') && isfield(Airbrake,'NominalCdCoast'), ...
+        'Airbrake:MissingNominalDrag', ...
+        'Added-airbrake data requires independent NominalMach/NominalCdCoast for coast prediction.');
+    cd=rocketPlantInterpolate(Airbrake.NominalMach,Airbrake.NominalCdCoast,abs(v)/soundSpeed);
+else
+    cd=interp1(CdLookup.VelocityBreakpoints,CdLookup.Table(:,1), ...
+        min(CdLookup.VelocityBreakpoints(end),max(CdLookup.VelocityBreakpoints(1),abs(v))), 'linear');
+end
 g=9.80665*(6371000/(6371000+altitudeMSL))^2;
 a=-g-0.5*rho*cd*Airbrake.ReferenceArea/Airbrake.DryMass*v*abs(v);
 end

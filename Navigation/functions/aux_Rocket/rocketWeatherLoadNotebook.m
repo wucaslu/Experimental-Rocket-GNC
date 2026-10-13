@@ -1,5 +1,5 @@
 function [Weather,metadata] = rocketWeatherLoadNotebook(Rocket,Weather,Source)
-%ROCKETWEATHERLOADNOTEBOOK Import the executed RocketPy atmosphere snapshot.
+%ROCKETWEATHERLOADNOTEBOOK Import a frozen RocketPy atmosphere snapshot.
 % INPUTS
 %   Rocket: launch latitude/longitude [rad] and geometric AltitudeMSL [m].
 %       These must match the archived notebook site; no relocation is hidden.
@@ -61,7 +61,7 @@ Weather.GustEnabled=0;
 Weather.GustRmsNED=zeros(3,1);
 Weather.DiscreteGustPeakNED=zeros(3,1);
 rocketWeatherValidateConfig(Weather,true);
-metadata.Source='Executed RocketPy notebook GFS snapshot';
+if ~isfield(metadata,'Source'),metadata.Source='Executed RocketPy notebook GFS snapshot';end
 metadata.Enabled=true;
 metadata.ProfileFile=char(Source.ProfileFile);
 metadata.MetadataFile=char(Source.MetadataFile);

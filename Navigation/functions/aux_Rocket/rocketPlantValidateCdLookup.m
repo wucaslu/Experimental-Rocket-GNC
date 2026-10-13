@@ -1,7 +1,25 @@
 function rocketPlantValidateCdLookup(lookup)
-%ROCKETPLANTVALIDATECDLOOKUP Validate an absolute speed/control Cd table.
+%ROCKETPLANTVALIDATECDLOOKUP Validate an absolute grid or added-airbrake data.
 % Rows are increasing nonnegative airspeeds; columns are control 0:0.1:1.
+% Mode=1 selects scattered Samples=[deployment,Mach,addedCd]. CSV loading
+% additionally rejects duplicate scattered coordinates before compilation.
 %#codegen
+if isstruct(lookup) && isscalar(lookup) && isfield(lookup,'Mode')
+    if ~isnumeric(lookup.Mode) || ~isreal(lookup.Mode) || ...
+            ~isscalar(lookup.Mode) || ~isfinite(lookup.Mode) || lookup.Mode~=1 || ...
+            ~isfield(lookup,'Samples')
+        error('RocketPlant:InvalidCdLookupTable','Scattered airbrake data requires Mode=1 and Samples.');
+    end
+    samples=lookup.Samples;
+    if ~isnumeric(samples) || ~isreal(samples) || size(samples,2)~=3 || ...
+            size(samples,1)<2 || any(~isfinite(samples(:))) || ...
+            any(samples(:,1)<0) || ...
+            any(samples(:,2)<0) || any(samples(:,3)<0)
+        error('RocketPlant:InvalidCdLookupTable', ...
+            'Samples must be finite nonnegative N-by-3 [deployment,Mach,addedCd], with N>=2.');
+    end
+    return
+end
 if ~isstruct(lookup) || ~isscalar(lookup) || ...
         ~isfield(lookup,'VelocityBreakpoints') || ...
         ~isfield(lookup,'ControlBreakpoints') || ~isfield(lookup,'Table')

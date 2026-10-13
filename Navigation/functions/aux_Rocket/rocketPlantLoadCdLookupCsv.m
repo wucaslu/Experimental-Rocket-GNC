@@ -1,10 +1,14 @@
 function CdLookup = rocketPlantLoadCdLookupCsv(filename)
-%ROCKETPLANTLOADCDLOOKUPCSV Load a complete absolute Cd grid from a CSV file.
+%ROCKETPLANTLOADCDLOOKUPCSV Load an absolute Cd grid or RocketPy airbrake data.
 % CdLookup = rocketPlantLoadCdLookupCsv(filename) reads the numeric columns
 % Cd, velocity [m/s], and level. Headers are trimmed and matched without
 % regard to case; column order and extra columns are unrestricted. Every
 % velocity must have exactly one row for each level 0:0.1:1. Levels within
 % 1e-9 of those nodes are mapped to the canonical control axis.
+% Alternatively, deployment_level, mach, cd columns describe scattered
+% dimensionless added airbrake Cd. This source preserves every sample for
+% RocketPy's Shepard interpolation, rather than constructing a grid.
+% Its numeric result has Mode=1 and Samples=[deployment_level,mach,cd].
 % The returned numeric struct is suitable for rocketPlantCdLookup. Call
 % this host-side loader during initialization; it keeps no persistent state.
 if ~(ischar(filename) && isrow(filename) && ~isempty(filename)) && ...
@@ -17,14 +21,24 @@ if ~isfile(filename)
         'Cd lookup CSV file does not exist: %s.',char(filename));
 end
 requiredHeaders=["cd","velocity","level"];
+scatteredSource=false;
 try
     % Table variable names must be unique even with the preserve rule. Check
     % the source header too, before readtable can rename duplicate headers.
     sourceHeaders=csvHeaders(readlines(filename));
     normalizedHeaders=lower(strtrim(sourceHeaders));
+    hasAbsoluteHeaders=all(ismember(requiredHeaders,normalizedHeaders));
+    hasMachHeaders=all(ismember(["cd","mach","deployment_level"],normalizedHeaders));
+    if hasAbsoluteHeaders && hasMachHeaders
+        invalidCsv('CSV must select either Cd/velocity/level or deployment_level/mach/cd, not both.');
+    end
+    if hasMachHeaders
+        requiredHeaders=["cd","mach","deployment_level"];
+        scatteredSource=true;
+    end
     for k=1:numel(requiredHeaders)
         if sum(normalizedHeaders==requiredHeaders(k))~=1
-            invalidCsv('CSV must contain exactly one each of Cd, velocity, and level.');
+            invalidCsv('CSV must contain exactly one of each header for its Cd lookup schema.');
         end
     end
     source=readtable(filename,'FileType','text','Delimiter',',', ...
@@ -52,13 +66,26 @@ for k=1:3
     values{k}=source{:,columns(k)};
     if ~isnumeric(values{k}) || ~isreal(values{k}) || ...
             ~iscolumn(values{k}) || any(~isfinite(values{k}))
-        invalidCsv('Cd, velocity, and level must contain finite real numeric values.');
+        invalidCsv('All three lookup columns must contain finite real numeric values.');
     end
     values{k}=double(values{k});
 end
 cd=values{1};
 velocity=values{2};
 level=values{3};
+if scatteredSource
+    % The published table includes deployment=1.1 support points. Keep
+    % those samples: the actuator/query, rather than the source, is clamped.
+    if numel(cd)<2 || any(cd<0) || any(velocity<0) || any(level<0)
+        invalidCsv('Airbrake data needs at least two samples and nonnegative deployment/Mach/Cd.');
+    end
+    if size(unique([level,velocity],'rows'),1)~=numel(level)
+        invalidCsv('CSV contains a duplicate deployment-Mach pair.');
+    end
+    CdLookup=struct('Mode',1,'Samples',[level,velocity,cd]);
+    rocketPlantValidateCdLookup(CdLookup);
+    return
+end
 if any(cd<0) || any(velocity<0)
     invalidCsv('Cd and velocity must be nonnegative.');
 end

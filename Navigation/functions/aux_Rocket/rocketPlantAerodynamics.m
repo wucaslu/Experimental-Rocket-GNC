@@ -8,6 +8,9 @@ function [forceB,momentB,aero] = rocketPlantAerodynamics(x,t,Rocket,Weather,gust
 % Legacy fields machCM/dynamicPressureCM describe the reference-origin flow.
 % The linear normal-force law is an approximation at large angle of attack.
 % Optional cdCommand replaces absolute axial Cd when cdOverrideEnabled=true.
+% Rocket.CdLookupIsIncremental=1 instead adds the supplied airbrake Cd to
+% nominal drag. The command uses the rocket reference area, matching the
+% RocketPy example's reference_area=None. Retraction contributes zero Cd.
 % Defaults (0,false) retain the powered/coast Mach curves and component laws.
 % Rocket.UseCdLookup=0 also forces the Mach curves for open-loop analysis,
 % including callers that normally request the actuator-position Cd table.
@@ -39,7 +42,13 @@ else
     cdNominal=rocketPlantInterpolate(Rocket.AeroMach,Rocket.AeroCdCoast,machCM);
 end
 cd=cdNominal;
-if cdOverrideEnabled, cd=cdCommand; end
+if cdOverrideEnabled
+    if isfield(Rocket,'CdLookupIsIncremental') && Rocket.CdLookupIsIncremental>0.5
+        cd=cdNominal+cdCommand;
+    else
+        cd=cdCommand;
+    end
+end
 n=size(Rocket.AeroSurfaceCP,1);
 aero=struct('machCM',machCM,'dynamicPressureCM',dynamicPressureCM,'cd',cd, ...
     'cdNominal',cdNominal,'cdCommand',cdCommand,'cdOverrideEnabled',cdOverrideEnabled, ...

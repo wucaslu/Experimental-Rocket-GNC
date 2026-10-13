@@ -1,4 +1,6 @@
 %% Forecast source for the Environment weather profile (initialization only).
+% Used when weatherSourceSettings selects 'forecast'; Calisto defaults to
+% the frozen executed-notebook profile instead of a new forecast download.
 % Open-Meteo serves NOAA GFS temperature, humidity and wind on pressure levels.
 % Reference: https://open-meteo.com/en/docs/gfs-api
 % Empty DateTimeUTC uses the current UTC hour from the latest available model.

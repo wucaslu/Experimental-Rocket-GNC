@@ -2,12 +2,13 @@
 % Run after rocketPlantSettings. Defaults preserve the existing dry ISA and
 % mean wind exactly. Set UseProfile=1 and rebuild after station/profile edits.
 % These settings supply the synthetic fallback/base profile and explicit gusts.
-% rocketPlantMain then imports forecast profiles when enabled in
-% weatherForecastSettings.m. Rebuilding afterward replaces the forecast.
+% rocketPlantMain then imports the selected notebook snapshot or forecast
+% from weatherSourceSettings.m. Rebuilding afterward replaces imported data.
 % The deterministic gusts are separate from forecast mean wind and are not
 % a measured turbulence record or validated Dryden turbulence model.
 Weather = struct();
 Weather.UseProfile = 0;
+Weather.UseTabulatedThermodynamics = 0;             % 1: replay supplied rho/a
 Weather.StationAltitudeMSL = Rocket.AltitudeMSL;      % geometric MSL [m]
 [~,weatherStationPressure,~,weatherStationTemperature] = ...
     rocketPlantAtmosphere(Weather.StationAltitudeMSL);

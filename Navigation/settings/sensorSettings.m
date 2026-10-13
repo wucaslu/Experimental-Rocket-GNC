@@ -49,6 +49,25 @@ E_cross = [ ...
     -1   0   1; ...
      1  -1   0  ];
 
+%% Finite-band colored-noise normalization
+% Pink.Sigma specifies the requested steady-state OUTPUT RMS, in sensor units.
+% Pink.Variance is the driving WHITE sample variance for the existing IIR
+% blocks in Navigation.slx and NavigationRocketPlant.slx. Their common transfer
+% function approximates a 1/f power spectrum over about 0.5--20 Hz at 50 Hz;
+% it is flat at very low frequency, not a measured bias-instability spectrum.
+% For unit-variance white input, output variance is sum(h.^2), approximately
+% 2.275809721574655. Divide the driving variance by that gain so the filter's
+% requested RMS is preserved. A 4096-sample impulse makes the remaining tail
+% negligible for these stable poles. Update these coefficients together with
+% the four model filters if their shape changes. Physical corners scale with
+% sample frequency; zero-state filters retain their normal startup transient.
+pinkFilterNumerator = [1 -1.894 0.9586 -0.06213];
+pinkFilterDenominator = [1 -2.479 1.985 -0.5056];
+pinkFilterImpulse = filter(pinkFilterNumerator,pinkFilterDenominator, ...
+    [1; zeros(4095,1)]);
+pinkFilterVarianceGain = sum(pinkFilterImpulse.^2);
+clear pinkFilterImpulse;
+
 %% Gyroscope
 % Datasheet used:
 %   Bosch Sensortec BMI088 Data Sheet, Rev. 1.9.
@@ -76,7 +95,7 @@ Sensor.Gyro.Noise.White.Seed = [1201;1202;1203];
 
 Sensor.Gyro.Noise.Pink.Mean = zeros(3,1);
 Sensor.Gyro.Noise.Pink.Sigma = deg2rad(2/3600)*ones(3,1);     % [rad/s], 2 deg/h
-Sensor.Gyro.Noise.Pink.Variance = Sensor.Gyro.Noise.Pink.Sigma.^2;
+Sensor.Gyro.Noise.Pink.Variance = Sensor.Gyro.Noise.Pink.Sigma.^2 / pinkFilterVarianceGain;
 Sensor.Gyro.Noise.Pink.Seed = [1301;1302;1303];
 
 % Systematic errors
@@ -133,7 +152,7 @@ Sensor.Acc.Noise.Pink.Mean = zeros(3,1);
 Sensor.Acc.Noise.Pink.Sigma = ...
     10e-3*g0*ones(3,1);   % [m/s^2], 10 mg
 Sensor.Acc.Noise.Pink.Variance = ...
-    Sensor.Acc.Noise.Pink.Sigma.^2;
+    Sensor.Acc.Noise.Pink.Sigma.^2 / pinkFilterVarianceGain;
 Sensor.Acc.Noise.Pink.Seed = [2301;2302;2303];
 
 % Systematic errors
@@ -188,7 +207,7 @@ Sensor.Mag.Noise.Pink.Mean = zeros(3,1);
 Sensor.Mag.Noise.Pink.Sigma = ...
     100e-9*ones(3,1);                             % [T], 100 nT
 Sensor.Mag.Noise.Pink.Variance = ...
-    Sensor.Mag.Noise.Pink.Sigma.^2;
+    Sensor.Mag.Noise.Pink.Sigma.^2 / pinkFilterVarianceGain;
 Sensor.Mag.Noise.Pink.Seed = [3301;3302;3303];
 
 % Systematic errors
@@ -242,7 +261,7 @@ Sensor.Baro.Noise.White.Seed = 4201;
 Sensor.Baro.Noise.Pink.Mean = 0;
 Sensor.Baro.Noise.Pink.Sigma = 5;                 % [Pa]
 Sensor.Baro.Noise.Pink.Variance = ...
-    Sensor.Baro.Noise.Pink.Sigma^2;
+    Sensor.Baro.Noise.Pink.Sigma^2 / pinkFilterVarianceGain;
 Sensor.Baro.Noise.Pink.Seed = 4301;
 
 % Systematic errors

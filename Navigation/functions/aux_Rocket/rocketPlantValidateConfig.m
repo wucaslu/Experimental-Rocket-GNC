@@ -1,5 +1,9 @@
 function rocketPlantValidateConfig(Rocket)
 %ROCKETPLANTVALIDATECONFIG Reject incomplete or inconsistent physical inputs.
+    if isfield(Rocket,'AxialDragScale')
+        assert(isscalar(Rocket.AxialDragScale) && isfinite(Rocket.AxialDragScale) && ...
+            Rocket.AxialDragScale>0,'RocketPlant:DragScale','AxialDragScale must be positive and finite.');
+    end
     names = fieldnames(Rocket);
     for k = 1:numel(names)
         value = Rocket.(names{k});
@@ -132,7 +136,14 @@ if staticFire.HasOxidizerMassProfile==1
         'RocketPlant:InvalidMotor','Prepared oxidizer profile endpoints are invalid.');
     source.oxidizer_mass_kg([1 end])=[properties.OxidizerInitialMass;properties.OxidizerResidualMass];
 end
-[expected,expectedType,expectedProperties]=rocketMotorPrepare(source,Motor.Type,properties);
+importOptions=struct();
+if isfield(staticFire,'AbruptEndpoints')
+    assert(isa(staticFire.AbruptEndpoints,'double') && ...
+        isscalar(staticFire.AbruptEndpoints) && staticFire.AbruptEndpoints==1, ...
+        'RocketPlant:InvalidMotor','AbruptEndpoints must be the explicit numeric flag 1.');
+    importOptions.EndpointMode='abrupt';
+end
+[expected,expectedType,expectedProperties]=rocketMotorPrepare(source,Motor.Type,properties,importOptions);
 assert(isequal(expectedType,Motor.Type) && isequal(expectedProperties,properties), ...
     'RocketPlant:InvalidMotor','Prepared motor type/properties are inconsistent.');
 names=fieldnames(expected);

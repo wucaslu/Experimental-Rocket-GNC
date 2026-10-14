@@ -14,6 +14,9 @@ function [forceB,momentB,aero] = rocketPlantAerodynamics(x,t,Rocket,Weather,gust
 % Defaults (0,false) retain the powered/coast Mach curves and component laws.
 % Rocket.UseCdLookup=0 also forces the Mach curves for open-loop analysis,
 % including callers that normally request the actuator-position Cd table.
+% Optional positive Rocket.AxialDragScale multiplies the applied axial Cd
+% (default 1), allowing truth-only aerodynamic uncertainty without changing
+% geometric reference area or the controller's nominal drag calibration.
 % References: RocketPy AeroSurface.compute_forces_and_moments and Fins.
 % https://docs.rocketpy.org/en/latest/_modules/rocketpy/rocket/aero_surface/aero_surface.html
 % https://docs.rocketpy.org/en/latest/_modules/rocketpy/rocket/aero_surface/fins/fins.html
@@ -48,6 +51,11 @@ if cdOverrideEnabled
     else
         cd=cdCommand;
     end
+end
+if isfield(Rocket,'AxialDragScale')
+    assert(isscalar(Rocket.AxialDragScale) && isfinite(Rocket.AxialDragScale) && ...
+        Rocket.AxialDragScale>0,'RocketPlant:DragScale','AxialDragScale must be positive and finite.');
+    cd=cd*Rocket.AxialDragScale;
 end
 n=size(Rocket.AeroSurfaceCP,1);
 aero=struct('machCM',machCM,'dynamicPressureCM',dynamicPressureCM,'cd',cd, ...

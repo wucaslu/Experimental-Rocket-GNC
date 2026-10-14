@@ -1,4 +1,4 @@
-%% RocketPy Calisto example, or the retained generic demonstration preset.
+%% IREC/Mandioca, RocketPy Calisto, or the retained generic demonstration.
 % This original plant follows the structure of RocketPy's 6-DOF simulator,
 % with axial time-varying center of mass and diagonal inertia. These values
 % are NOT identified from flight_data.csv and are not a flight prediction.
@@ -8,8 +8,8 @@
 % https://docs.rocketpy.org/en/latest/reference/classes/Parachute.html
 % https://docs.rocketpy.org/en/latest/_modules/rocketpy/rocket/aero_surface/fins/fins.html
 % SI units; body +Z points toward the nose; local navigation frame is NED.
-% RocketParameterSet='calisto' is the default; select 'generic' explicitly to
-% reproduce the previous demonstration. Notebook values are example inputs.
+% Main defaults to RocketParameterSet='irec'. Direct settings retain calisto
+% when no selector exists; generic reproduces the previous demonstration.
 
 Rocket = struct();
 Rocket.Ts = 0.02;                % truth output / explicit state update [s]
@@ -96,6 +96,20 @@ if strcmp(RocketParameterSet,'calisto')
     calistoNames = fieldnames(CalistoRocketParameters);
     for calistoIndex=1:numel(calistoNames)
         Rocket.(calistoNames{calistoIndex}) = CalistoRocketParameters.(calistoNames{calistoIndex});
+    end
+end
+if strcmp(RocketParameterSet,'irec')
+    % Retain the current reference launch conditions: no IREC launch site or
+    % heading was supplied. Vehicle stations use the IREC dry-CM body origin.
+    Rocket.Latitude=deg2rad(32.990254);
+    Rocket.Longitude=deg2rad(-106.974998);
+    Rocket.AltitudeMSL=1400;
+    Rocket.LaunchHeading=0;
+    Rocket.LaunchInclination=deg2rad(85);
+    Rocket.LaunchRoll=deg2rad(-135);
+    irecNames=fieldnames(IrecRocketParameters);
+    for irecIndex=1:numel(irecNames)
+        Rocket.(irecNames{irecIndex})=IrecRocketParameters.(irecNames{irecIndex});
     end
 end
 % Initialization-only scenario; runtime Rocket contains numeric properties.

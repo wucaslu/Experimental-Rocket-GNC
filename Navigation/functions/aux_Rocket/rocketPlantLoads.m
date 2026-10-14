@@ -83,6 +83,7 @@ elseif phase<1.5
         % Native udot_rail1 uses axial thrust/drag/gravity, with no moving-CM
         % transport terms or Coriolis while the rail constrains the attitude.
         poweredRailCd=rocketPlantInterpolate(Rocket.AeroMach,Rocket.AeroCdPowered,mach);
+        if isfield(Rocket,'AxialDragScale'),poweredRailCd=poweredRailCd*Rocket.AxialDragScale;end
         railDrag=-.5*rho*norm(vAirB)^2*Rocket.ReferenceArea*poweredRailCd*Rocket.AeroEnabled;
         alongAcceleration=max(0,(fThrust(3)+railDrag)/mass+g*rail(3));
     else

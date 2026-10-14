@@ -12,10 +12,16 @@ addpath(fullfile(rocketNavigationDir,'settings','environment'));
 
 run(fullfile(rocketNavigationDir,'settings','sensorSettings.m'));
 run(fullfile(rocketNavigationDir,'settings','mekfSettings.m'));
-% Current benchmark defaults to the full published airbrake example. Set
-% RocketScenario='notebook' and RocketWeatherSource='rocketpy-notebook'
-% before initialization to restore the GFS comparison case.
-if ~exist('RocketScenario','var'), RocketScenario='rocketpy-airbrakes'; end
+% Default analysis is the supplied IREC/Mandioca vehicle with its RASAero Cd
+% and retracted airbrakes. RocketParameterSet='calisto' restores the previous
+% published airbrake example and Canario table. Set RocketCdLookupSource='scenario'
+% for the previous drag calibration. RocketScenario='notebook' and
+% RocketWeatherSource='rocketpy-notebook' restore the GFS comparison case.
+if ~exist('RocketParameterSet','var'),RocketParameterSet='irec';end
+if ~exist('RocketScenario','var')
+    if strcmp(RocketParameterSet,'irec'),RocketScenario='irec-baseline';
+    else,RocketScenario='rocketpy-airbrakes';end
+end
 run(fullfile(rocketNavigationDir,'settings','rocketPlantSettings.m'));
 run(fullfile(rocketNavigationDir,'settings','rocketCdLookupSettings.m'));
 run(fullfile(rocketNavigationDir,'settings','weatherSettings.m'));

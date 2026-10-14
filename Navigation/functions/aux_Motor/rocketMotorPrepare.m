@@ -1,4 +1,4 @@
-function [StaticFire,typeCode,Properties,Info] = rocketMotorPrepare(source,motorType,properties)
+function [StaticFire,typeCode,Properties,Info] = rocketMotorPrepare(source,motorType,properties,options)
 %ROCKETMOTORPREPARE Validate static-fire data and prepare numeric motor inputs.
 % INPUTS
 %   source: numeric N-by-2 [time_s,thrust_N], a CSV filename, or a table
@@ -20,6 +20,14 @@ function [StaticFire,typeCode,Properties,Info] = rocketMotorPrepare(source,motor
 %       GrainOuterRadius, GrainInitialInnerRadius, GrainInitialHeight and
 %       GrainSeparation [m]. Fuel initial/residual inertias are then derived
 %       from geometry; the fuel centroid must be fixed. Defaults disable it.
+%   options: optional scalar initialization structure. TimeColumn and
+%       ThrustColumn select table/CSV headers (defaults time_s/thrust_N);
+%       values must already be seconds/newtons. EndpointMode='zero' requires
+%       zero thrust at both endpoints. Explicit EndpointMode='abrupt' preserves
+%       nonzero endpoint measurements and applies zero thrust outside the
+%       record, with burnout at its final timestamp. No tail is synthesized.
+%       Optional BurnOutTime [s] clips the record to that positive timestamp,
+%       interpolating a boundary sample without rescaling time or thrust.
 % OUTPUTS
 %   StaticFire: numeric curve, physical cumulative/total impulse [N*s],
 %       normalized remaining channel fractions, and numeric profile flags.
@@ -30,6 +38,8 @@ function [StaticFire,typeCode,Properties,Info] = rocketMotorPrepare(source,motor
 % Without measured mass profiles, mass flow follows measured thrust assuming
 % constant effective exhaust velocity; this is not a combustion prediction.
 
+if nargin<4,options=struct();end
+options=importOptions(options);
 typeCode = parseType(motorType);
 typeNames = {'solid','hybrid','liquid'};
 Properties = validateProperties(properties,typeCode);
@@ -55,7 +65,7 @@ else
         [~,~,extension] = fileparts(sourceDescription);
         assert(strcmpi(extension,'.csv'),'RocketMotor:SourceExtension', ...
             'The file source must be a CSV; other formats are not inferred.');
-        data = readtable(sourceDescription,'VariableNamingRule','preserve');
+        data = readtable(sourceDescription,'VariableNamingRule','preserve','TextType','string');
     else
         assert(istable(source),'RocketMotor:SourceType', ...
             'Source must be a numeric N-by-2 matrix, CSV filename, or table.');
@@ -63,15 +73,15 @@ else
         sourceDescription = 'MATLAB static-fire table';
     end
     names = data.Properties.VariableNames;
-    required = {'time_s','thrust_N'};
-    allowed = {'time_s','thrust_N','fuel_mass_kg','oxidizer_mass_kg','propellant_mass_kg'};
+    required = {options.TimeColumn,options.ThrustColumn};
+    allowed = [required,{'fuel_mass_kg','oxidizer_mass_kg','propellant_mass_kg'}];
     assert(all(ismember(required,names)),'RocketMotor:MissingColumns', ...
-        'Static-fire tables require time_s and thrust_N columns.');
+        'Static-fire tables require %s and %s columns.',required{1},required{2});
     assert(all(ismember(names,allowed)),'RocketMotor:UnknownColumns', ...
         'Unsupported static-fire columns: %s.',strjoin(names(~ismember(names,allowed)),', '));
     assert(height(data)>=2,'RocketMotor:CurveLength','At least two samples are required.');
-    time = numericColumn(data,'time_s');
-    thrust = numericColumn(data,'thrust_N');
+    time = numericColumn(data,options.TimeColumn);
+    thrust = numericColumn(data,options.ThrustColumn);
     hasFuelColumn = ismember('fuel_mass_kg',names);
     hasAlias = ismember('propellant_mass_kg',names);
     assert(~hasAlias || typeCode==1,'RocketMotor:PropellantAliasType', ...
@@ -92,8 +102,32 @@ end
 
 assert(time(1)==0 && all(diff(time)>0),'RocketMotor:TimeGrid', ...
     'Curve time must start at zero and increase strictly.');
-assert(all(thrust>=0) && thrust(1)==0 && thrust(end)==0, ...
-    'RocketMotor:ThrustCurve','Thrust must be nonnegative with zero-force endpoints.');
+assert(all(thrust>=0),'RocketMotor:ThrustCurve','Thrust must be nonnegative.');
+sourceSampleCount=numel(time);
+sourceDuration=time(end);
+sourceImpulse=trapz(time,thrust);
+if ~isempty(options.BurnOutTime)
+    assert(options.BurnOutTime<=sourceDuration,'RocketMotor:BurnOutTime', ...
+        'BurnOutTime cannot exceed the measured record; extrapolated tails are not supplied.');
+    if options.BurnOutTime<sourceDuration
+        retained=time<options.BurnOutTime;
+        boundaryThrust=interp1(time,thrust,options.BurnOutTime,'linear');
+        if hasFuelProfile
+            boundaryFuel=interp1(time,fuelMass,options.BurnOutTime,'linear');
+            fuelMass=[fuelMass(retained);boundaryFuel];
+        end
+        if hasOxidizerProfile
+            boundaryOxidizer=interp1(time,oxidizerMass,options.BurnOutTime,'linear');
+            oxidizerMass=[oxidizerMass(retained);boundaryOxidizer];
+        end
+        time=[time(retained);options.BurnOutTime];
+        thrust=[thrust(retained);boundaryThrust];
+    end
+end
+if strcmp(options.EndpointMode,'zero')
+    assert(thrust(1)==0 && thrust(end)==0,'RocketMotor:ThrustCurve', ...
+        'Zero-force endpoints are required unless EndpointMode=abrupt is explicitly selected.');
+end
 cumulativeImpulse = cumtrapz(time,thrust);
 totalImpulse = cumulativeImpulse(end);
 assert(isfinite(totalImpulse) && totalImpulse>0,'RocketMotor:TotalImpulse', ...
@@ -118,6 +152,11 @@ StaticFire = struct('Time',time,'Thrust',thrust, ...
     'FuelFraction',fuelFraction,'OxidizerFraction',oxidizerFraction, ...
     'HasFuelMassProfile',double(hasFuelProfile), ...
     'HasOxidizerMassProfile',double(hasOxidizerProfile));
+if strcmp(options.EndpointMode,'abrupt')
+    % Numeric provenance also survives cached validation and Monte Carlo
+    % re-preparation; legacy zero-endpoint runtime structures are unchanged.
+    StaticFire.AbruptEndpoints=1;
+end
 constantRatio = typeCode>1 && ~hasFuelProfile && ~hasOxidizerProfile;
 if fuelConsumed>0
     consumedRatio = oxidizerConsumed/fuelConsumed;
@@ -141,6 +180,48 @@ Info = struct('MotorType',typeNames{typeCode},'TypeCode',typeCode, ...
         'Enabled solid BATES inertia follows symmetric bore/end regression reconstructed from remaining mass; other channel inertias and axial centers use endpoint interpolation.', ...
         'Component centers use one body-fixed reference; aggregate motor inertia includes parallel-axis shifts to its moving center of mass.', ...
         'Static-fire thrust is replayed; grain geometry follows mass depletion, while chamber pressure, combustion and altitude thrust correction are not predicted.'}});
+Info.EndpointMode=options.EndpointMode;
+Info.TimeColumn=options.TimeColumn;
+Info.ThrustColumn=options.ThrustColumn;
+Info.SourceSampleCount=sourceSampleCount;
+Info.SourceDurationS=sourceDuration;
+Info.SourceTotalImpulseNs=sourceImpulse;
+Info.ExcludedImpulseNs=sourceImpulse-totalImpulse;
+if strcmp(options.EndpointMode,'abrupt')
+    Info.Assumptions{end+1}= ...
+        'Explicit abrupt endpoints preserve all recorded thrust values; thrust jumps to zero and configured residual propellant is reached at the final timestamp.';
+end
+end
+
+function options=importOptions(provided)
+assert(isstruct(provided) && isscalar(provided),'RocketMotor:ImportOptions', ...
+    'Import options must be a scalar structure.');
+options=struct('TimeColumn','time_s','ThrustColumn','thrust_N', ...
+    'EndpointMode','zero','BurnOutTime',[]);
+names=fieldnames(provided);
+for k=1:numel(names)
+    name=names{k};
+    assert(isfield(options,name),'RocketMotor:ImportOptionName', ...
+        'Unsupported import option: %s.',name);
+    value=provided.(name);
+    if strcmp(name,'BurnOutTime')
+        assert(isnumeric(value) && isreal(value) && ...
+            (isempty(value) || (isscalar(value) && isfinite(value) && value>0)), ...
+            'RocketMotor:BurnOutTime','BurnOutTime must be empty or a positive finite scalar in seconds.');
+        options.(name)=double(value);
+        continue
+    end
+    assert((ischar(value) && isrow(value) && ~isempty(value)) || ...
+        (isstring(value) && isscalar(value) && ~ismissing(value) && strlength(value)>0), ...
+        'RocketMotor:ImportOptionValue','%s must be a nonempty scalar string.',name);
+    options.(name)=char(value);
+end
+assert(any(strcmp(options.EndpointMode,{'zero','abrupt'})), ...
+    'RocketMotor:EndpointMode','EndpointMode must be zero or abrupt.');
+reserved={'fuel_mass_kg','oxidizer_mass_kg','propellant_mass_kg'};
+assert(~strcmp(options.TimeColumn,options.ThrustColumn) && ...
+    ~any(ismember({options.TimeColumn,options.ThrustColumn},reserved)), ...
+    'RocketMotor:ColumnMapping','Time/thrust columns must be distinct and cannot use mass-profile names.');
 end
 
 function code = parseType(motorType)
